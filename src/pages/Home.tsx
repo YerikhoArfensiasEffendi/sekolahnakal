@@ -167,7 +167,7 @@ export default function Home() {
                   <span>Sedang Tren Sekarang (Traffic Tertinggi)</span>
                 </span>
               }
-              href="/gallery?sort=trending"
+              href="/private-server"
             >
               <MovieRow movies={data.trending} />
             </Section>
@@ -182,7 +182,7 @@ export default function Home() {
                   <span>Rekomendasi Video (Acak)</span>
                 </span>
               }
-              href="/gallery"
+              href="/private-server"
             >
               <MovieRow movies={data.randomFeed} />
             </Section>
@@ -190,14 +190,14 @@ export default function Home() {
 
           {/* 3. RILIS TERBARU */}
           {data.newReleases.length > 0 && (
-            <Section title="✨ Rilis Terbaru" href="/gallery?sort=new">
+            <Section title="✨ Rilis Terbaru" href="/private-server">
               <MovieRow movies={data.newReleases} />
             </Section>
           )}
 
           {/* 4. PALING BANYAK DISUKAI */}
           {data.popular.length > 0 && (
-            <Section title="⭐ Paling Banyak Disukai" href="/gallery?sort=popular">
+            <Section title="⭐ Paling Banyak Disukai" href="/private-server">
               <MovieRow movies={data.popular} />
             </Section>
           )}
