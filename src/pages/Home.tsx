@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { Movie, WatchProgress } from '@/types/movie';
 import { movieService } from '@/services/movie.service';
 import { movieStore } from '@/services/movieStore.service';
@@ -168,6 +169,26 @@ export default function Home() {
               <MovieRow movies={data.regular} />
             </Section>
           )}
+
+          {/* Discord Role Integration Info Banner on Landing Page */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#121215] border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👑</span>
+                <h3 className="text-sm font-bold text-white">Punya Role VIP / VVIP di Discord?</h3>
+              </div>
+              <p className="text-xs text-zinc-400 max-w-xl leading-relaxed">
+                Hubungkan akun Anda melalui menu <strong>Pengaturan</strong> untuk menyinkronkan role Discord dan membuka seluruh video eksklusif tanpa batas.
+              </p>
+            </div>
+            <Link
+              to="/settings?tab=discord"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 text-xs font-bold transition-all shrink-0 cursor-pointer"
+            >
+              <span>Buka Pengaturan Akun</span>
+              <span>→</span>
+            </Link>
+          </div>
 
           {/* 2. Exclusive VVIP Section */}
           {data.vvip.length > 0 && (

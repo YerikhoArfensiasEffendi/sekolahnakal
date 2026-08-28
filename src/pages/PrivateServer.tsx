@@ -16,7 +16,7 @@ import type { Movie } from '@/types/movie';
 import { movieStore } from '@/services/movieStore.service';
 import { categoryStore } from '@/services/categoryStore.service';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTierBadgeConfig, DISCORD_BOT_INVITE_URL } from '@/utils/tier';
+import { getTierBadgeConfig } from '@/utils/tier';
 import { MovieGrid } from '@/components/movie/MovieGrid';
 import { SideAdSlot } from '@/components/ads/SideAdSlot';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -26,7 +26,6 @@ import {
   IconStar,
   IconDiamond,
   IconUser,
-  IconDiscord,
 } from '@/components/icons';
 
 // Tier definitions with dedicated categories mapping
@@ -280,18 +279,6 @@ export default function PrivateServer() {
                   <span className="text-xs font-bold text-white">{userTierConfig.label}</span>
                 </div>
               </div>
-
-              {userTier === 'regular' && (
-                <a
-                  href={DISCORD_BOT_INVITE_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 rounded-full bg-[#5865F2]/20 hover:bg-[#5865F2] text-[#9ba5ff] hover:text-white border border-[#5865F2]/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                >
-                  <IconDiscord className="w-3.5 h-3.5" />
-                  <span>Buka Akses VVIP</span>
-                </a>
-              )}
             </div>
           </div>
 
