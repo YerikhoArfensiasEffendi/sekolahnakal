@@ -15,12 +15,17 @@ import { categoryStore } from './categoryStore.service';
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const movieService = {
-  // Ambil film trending (rating tertinggi & VVIP/VIP)
+  // Ambil film trending (diurutkan berdasarkan traffic / views terbanyak ke paling sedikit)
   async getTrending(): Promise<Movie[]> {
     if (env.USE_MOCK) {
       await delay(100);
       const all = movieStore.getAll();
-      return all.slice(0, 10);
+      return [...all].sort((a, b) => {
+        const viewsA = (parseInt(localStorage.getItem(`sn_views_${a.id}`) || '0', 10) || (a.views || 0));
+        const viewsB = (parseInt(localStorage.getItem(`sn_views_${b.id}`) || '0', 10) || (b.views || 0));
+        if (viewsB !== viewsA) return viewsB - viewsA;
+        return (b.rating || 0) - (a.rating || 0);
+      });
     }
     return api.get(API_ENDPOINTS.MOVIES.TRENDING);
   },
@@ -30,7 +35,7 @@ export const movieService = {
     if (env.USE_MOCK) {
       await delay(100);
       const all = movieStore.getAll();
-      return all.filter((m) => m.rating >= 7.5);
+      return [...all].sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
     return api.get(API_ENDPOINTS.MOVIES.POPULAR);
   },

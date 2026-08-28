@@ -28,7 +28,7 @@ import {
   IconUser,
 } from '@/components/icons';
 
-// Tier definitions with dedicated categories mapping
+// Tier definitions
 const TIER_GROUPS = [
   {
     id: 'all',
@@ -38,7 +38,6 @@ const TIER_GROUPS = [
     color: 'text-white',
     badgeClass: 'bg-white/10 text-white border-white/20',
     description: 'Seluruh katalog video dari semua node private server.',
-    categories: [],
   },
   {
     id: 'vvip',
@@ -48,14 +47,6 @@ const TIER_GROUPS = [
     color: 'text-amber-400',
     badgeClass: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
     description: 'Master raw footage, edisi 4K uncensored tanpa sensor kualitas tertinggi.',
-    categories: [
-      'Uncensored Cut',
-      'Eksklusif VVIP',
-      'Private Affair',
-      'Director’s Cut',
-      'Master High Bitrate',
-      'Romance & Sensual',
-    ],
   },
   {
     id: 'vip',
@@ -65,14 +56,6 @@ const TIER_GROUPS = [
     color: 'text-purple-400',
     badgeClass: 'bg-purple-500/10 text-purple-300 border-purple-500/30',
     description: 'Serial cosplay roleplay, sinematik Asia & JAV style beresolusi tinggi.',
-    categories: [
-      'Cosplay & Roleplay',
-      'Asian & JAV Style',
-      'Western & Premiere',
-      'Late Night Affair',
-      'Drama Dewasa',
-      'Sensual Fantasy',
-    ],
   },
   {
     id: 'regular',
@@ -82,13 +65,6 @@ const TIER_GROUPS = [
     color: 'text-gray-300',
     badgeClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
     description: 'Koleksi video publik yang dapat diakses bebas oleh semua murid.',
-    categories: [
-      'Romance & Sensual',
-      'Drama Dewasa',
-      'Indie Short',
-      'Teaser & Trailer',
-      'Umum',
-    ],
   },
 ];
 
@@ -147,23 +123,27 @@ export default function PrivateServer() {
     setSearchParams(newParams);
   };
 
-  // Determine available categories for the active tier
+  // Determine active tier definition & available categories dynamically from real data only
   const currentTierGroup = TIER_GROUPS.find((g) => g.id === activeTier) || TIER_GROUPS[0]!;
   const availableCategories = useMemo(() => {
-    if (activeTier === 'all') {
-      return (categories || []).map((c) => c.name);
-    }
-    // Combine group predefined categories with server categories matching the tier
-    const list = new Set<string>(currentTierGroup.categories);
-    allMovies
-      .filter((m) => (m.tier || 'regular').toLowerCase() === activeTier.toLowerCase())
-      .forEach((m) => {
-        (m.genres || []).forEach((g) => {
-          if (g && typeof g === 'string') list.add(g.trim());
-        });
+    const list = new Set<string>();
+    (categories || []).forEach((c) => {
+      if (c?.name && typeof c.name === 'string') list.add(c.name.trim());
+    });
+
+    const targetMovies =
+      activeTier === 'all'
+        ? allMovies
+        : allMovies.filter((m) => (m.tier || 'regular').toLowerCase() === activeTier.toLowerCase());
+
+    targetMovies.forEach((m) => {
+      (m.genres || []).forEach((g) => {
+        if (g && typeof g === 'string') list.add(g.trim());
       });
-    return Array.from(list);
-  }, [activeTier, categories, allMovies, currentTierGroup]);
+    });
+
+    return Array.from(list).filter(Boolean);
+  }, [activeTier, categories, allMovies]);
 
   // Filtered & Sorted Movie List
   const filteredMovies = useMemo(() => {
@@ -337,42 +317,44 @@ export default function PrivateServer() {
               </div>
             </div>
 
-            {/* Seamless Horizontal Category Tags (No heavy box) */}
-            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-2 scrollbar-none">
-              <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap shrink-0">
-                Kategori:
-              </span>
+            {/* Seamless Horizontal Category Tags (Render only when actual categories exist) */}
+            {availableCategories.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-2 scrollbar-none">
+                <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap shrink-0">
+                  Kategori:
+                </span>
 
-              <button
-                onClick={() => handleSelectGenre('all')}
-                className={cn(
-                  'px-3 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer',
-                  activeGenre === 'all'
-                    ? 'bg-brand text-white'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                )}
-              >
-                Semua Kategori
-              </button>
+                <button
+                  onClick={() => handleSelectGenre('all')}
+                  className={cn(
+                    'px-3 py-1 rounded-md text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer',
+                    activeGenre === 'all'
+                      ? 'bg-brand text-white'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                  )}
+                >
+                  Semua Kategori
+                </button>
 
-              {availableCategories.map((catName) => {
-                const isCatSelected = activeGenre.toLowerCase() === catName.toLowerCase();
-                return (
-                  <button
-                    key={catName}
-                    onClick={() => handleSelectGenre(catName)}
-                    className={cn(
-                      'px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors cursor-pointer',
-                      isCatSelected
-                        ? 'bg-brand text-white font-bold'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                    )}
-                  >
-                    {catName}
-                  </button>
-                );
-              })}
-            </div>
+                {availableCategories.map((catName) => {
+                  const isCatSelected = activeGenre.toLowerCase() === catName.toLowerCase();
+                  return (
+                    <button
+                      key={catName}
+                      onClick={() => handleSelectGenre(catName)}
+                      className={cn(
+                        'px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors cursor-pointer',
+                        isCatSelected
+                          ? 'bg-brand text-white font-bold'
+                          : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                      )}
+                    >
+                      {catName}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Video Grid Presentation */}

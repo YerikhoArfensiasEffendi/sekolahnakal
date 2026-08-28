@@ -13,6 +13,7 @@ export interface Movie {
   overview: string;
   tier?: VideoTier;
   videoUrl?: string;
+  views?: number;
 }
 
 export interface MovieDetail extends Movie {
