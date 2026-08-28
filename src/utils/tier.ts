@@ -142,15 +142,8 @@ export function hasUploadAccessFromRoles(roles?: string[]): boolean {
   const upper = roles.map((r) => String(r || '').toUpperCase());
   return upper.some(
     (r) =>
-      r.includes('ADMIN') ||
-      r.includes('OWNER') ||
-      r.includes('FOUNDER') ||
-      r.includes('DEV') ||
-      r.includes('KREATOR') ||
-      r.includes('CREATOR') ||
-      r.includes('UPLOADER') ||
-      r.includes('TALENT') ||
-      r.includes('STAFF')
+      r.includes('ENGINEER') ||
+      r.includes('1491386462518775938')
   );
 }
 

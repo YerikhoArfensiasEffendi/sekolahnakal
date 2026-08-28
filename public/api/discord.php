@@ -22,6 +22,7 @@ $GUILD_ID = getenv('DISCORD_GUILD_ID') ?: '1402615068818145401';
 $CLIENT_ID = getenv('DISCORD_CLIENT_ID') ?: '1542726904862216363';
 $ROLE_VVIP_ID = '1402875594286432397';
 $ROLE_VIP_ID = '1402875677379657738';
+$ROLE_ENGINEER_ID = '1491386462518775938';
 
 $configPath = __DIR__ . '/data/config.json';
 if (file_exists($configPath)) {
@@ -40,6 +41,9 @@ if (file_exists($configPath)) {
     }
     if (!empty($cfg['discord_role_vip'])) {
         $ROLE_VIP_ID = $cfg['discord_role_vip'];
+    }
+    if (!empty($cfg['discord_role_engineer'])) {
+        $ROLE_ENGINEER_ID = $cfg['discord_role_engineer'];
     }
 }
 
@@ -216,17 +220,13 @@ if ($action === 'verify_member') {
         $tier = 'vip';
     }
 
+    if (in_array((string)$ROLE_ENGINEER_ID, $memberRoleIds)) {
+        $hasUploadAccess = true;
+    }
+
     foreach ($rolesFound as $r) {
         $up = strtoupper($r);
-        if (
-            strpos($up, 'ADMIN') !== false ||
-            strpos($up, 'OWNER') !== false ||
-            strpos($up, 'DEV') !== false ||
-            strpos($up, 'KREATOR') !== false ||
-            strpos($up, 'CREATOR') !== false ||
-            strpos($up, 'UPLOADER') !== false ||
-            strpos($up, 'STAFF') !== false
-        ) {
+        if (strpos($up, 'ENGINEER') !== false || strpos($up, '1491386462518775938') !== false) {
             $hasUploadAccess = true;
         }
 
@@ -314,21 +314,17 @@ if ($action === 'verify_oauth_user') {
         $tier = 'vip';
     }
 
+    if (in_array((string)$ROLE_ENGINEER_ID, $memberRoleIds)) {
+        $hasUploadAccess = true;
+    }
+
     foreach ($rolesFound as $r) {
         $up = strtoupper($r);
-        if (
-            strpos($up, 'ADMIN') !== false ||
-            strpos($up, 'OWNER') !== false ||
-            strpos($up, 'DEV') !== false ||
-            strpos($up, 'KREATOR') !== false ||
-            strpos($up, 'CREATOR') !== false ||
-            strpos($up, 'UPLOADER') !== false ||
-            strpos($up, 'STAFF') !== false
-        ) {
+        if (strpos($up, 'ENGINEER') !== false || strpos($up, '1491386462518775938') !== false) {
             $hasUploadAccess = true;
         }
 
-        if (strpos($up, 'ADMIN') !== false || strpos($up, 'VVIP') !== false || strpos($up, 'UNCENSORED') !== false) {
+        if (strpos($up, 'VVIP') !== false || strpos($up, 'UNCENSORED') !== false) {
             $tier = 'vvip';
         } elseif (strpos($up, 'VIP') !== false && $tier !== 'vvip') {
             $tier = 'vip';

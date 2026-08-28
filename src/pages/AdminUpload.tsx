@@ -79,19 +79,16 @@ const TIER_OPTIONS: { id: VideoTier; label: string; desc: string; icon: 'user' |
 ];
 
 const DISCORD_STUDIO_ROLES = [
-  { id: 'ADMIN', label: '👑 Admin Server (Full Access)', hasAccess: true },
-  { id: 'KREATOR', label: '🎬 Kreator Resmi (Full Upload)', hasAccess: true },
-  { id: 'UPLOADER', label: '📦 Uploader Konten (Upload Only)', hasAccess: true },
-  { id: 'TALENT', label: '💎 Talent Verified (Talent Tier)', hasAccess: true },
+  { id: 'Engineer Sekolah', label: '🛠️ Engineer Sekolah (Admin & Uploader)', hasAccess: true },
+  { id: 'VVIP', label: '👑 Member VVIP (Penonton)', hasAccess: false },
   { id: 'VIP', label: '⭐ Member VIP (Penonton)', hasAccess: false },
-  { id: 'VVIP', label: '🔥 Member VVIP (Penonton)', hasAccess: false },
   { id: 'REGULAR', label: '👤 Member Regular (Tanpa Akses)', hasAccess: false },
 ];
 
 function checkHasDiscordUploadAccess(roles?: string[]): boolean {
   if (!roles || roles.length === 0) return false;
-  const allowed = ['admin', 'kreator', 'uploader', 'talent', 'owner', 'developer', 'pengurus'];
-  return roles.some((r) => allowed.includes(r.toLowerCase()));
+  const upper = roles.map((r) => String(r || '').toUpperCase());
+  return upper.some((r) => r.includes('ENGINEER') || r.includes('1491386462518775938'));
 }
 
 // Membaca total suka nyata per video
@@ -112,7 +109,7 @@ export default function AdminUpload() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') as StudioTab) || 'dashboard';
 
-  const { tier: userTier, discordAccount, syncDiscord, disconnectDiscord } = useAuth();
+  const { discordAccount, syncDiscord, disconnectDiscord } = useAuth();
   const { success, error, info } = useToast();
 
   // ================= 1. DISCORD ROLE AUTHENTICATION =================
@@ -122,8 +119,8 @@ export default function AdminUpload() {
   const [isVerifyingDiscord, setIsVerifyingDiscord] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
-  // Status Otorisasi: akun Discord wajib memiliki role upload
-  const hasDiscordAccess = checkHasDiscordUploadAccess(discordAccount?.roles) || userTier === 'vvip' || userTier === 'talent';
+  // Status Otorisasi: akun Discord wajib memiliki role Engineer Sekolah
+  const hasDiscordAccess = checkHasDiscordUploadAccess(discordAccount?.roles);
   const isAuthorized = hasDiscordAccess;
 
   // ================= 2. STUDIO STATE =================

@@ -34,7 +34,7 @@ export function Header() {
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
 
   const tierConfig = getTierBadgeConfig(tier);
-  const hasUploadAccess = hasUploadAccessFromRoles(discordAccount?.roles) || tier === 'vvip';
+  const hasUploadAccess = hasUploadAccessFromRoles(discordAccount?.roles);
 
   // Live matching movies for instant search dropdown
   const liveResults = searchQuery.trim()
