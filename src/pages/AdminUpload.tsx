@@ -220,6 +220,8 @@ export default function AdminUpload() {
   const videoInputRef = useRef<HTMLInputElement | null>(null);
   const bulkInputRef = useRef<HTMLInputElement | null>(null);
   const adMediaInputRef = useRef<HTMLInputElement | null>(null);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const customImageInputRef = useRef<HTMLInputElement | null>(null);
 
   // Otomatis arahkan ke beranda jika akun Discord terhubung tetapi tidak memiliki role upload
   useEffect(() => {
@@ -451,6 +453,44 @@ export default function AdminUpload() {
     }
     setIsThumbnailEditorOpen(false);
     success('Frame thumbnail kustom berhasil dikunci!');
+  };
+
+  const handleCaptureCurrentPlayerFrame = () => {
+    if (!previewVideoRef.current) {
+      error('Video preview belum siap.');
+      return;
+    }
+    const v = previewVideoRef.current;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 640;
+      canvas.height = 360;
+      const ctx = canvas.getContext('2d');
+      if (ctx && v.videoWidth > 0) {
+        ctx.drawImage(v, 0, 0, 640, 360);
+        const frameUrl = canvas.toDataURL('image/jpeg', 0.92);
+        setPosterUrl(frameUrl);
+        setBackdropUrl(frameUrl);
+        success(`📸 Berhasil mengambil thumbnail dari detik ke-${v.currentTime.toFixed(1)}s!`);
+        return;
+      }
+    } catch {}
+    error('Gagal mengambil frame dari video. Putar video sejenak lalu klik tombol tangkap frame.');
+  };
+
+  const handleCustomImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      if (dataUrl) {
+        setPosterUrl(dataUrl);
+        setBackdropUrl(dataUrl);
+        success(`✓ Gambar thumbnail "${file.name}" berhasil diterapkan!`);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // ================= BULK MULTI-VIDEO PROCESSOR =================
@@ -2342,56 +2382,40 @@ export default function AdminUpload() {
                   </form>
                 </div>
 
-                <div className="lg:col-span-4 space-y-3 sticky top-24">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 pb-2 border-b border-zinc-800/80">
-                    👁️ Tinjauan Tampilan Video
-                  </h3>
+                <div className="lg:col-span-4 space-y-3.5 sticky top-24">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-1.5">
+                      <span>👁️</span>
+                      <span>Tinjauan Video & Thumbnail</span>
+                    </h3>
+                    {selectedFile && (
+                      <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        ⚡ Live Preview
+                      </span>
+                    )}
+                  </div>
 
                   <div className="space-y-3">
-                    <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-black border border-zinc-800">
-                      {isThumbnailEditorOpen && localVideoBlobUrl ? (
-                        <div className="relative h-full w-full overflow-hidden bg-black flex items-center justify-center">
-                          <video
-                            ref={editorVideoRef}
-                            src={localVideoBlobUrl}
-                            muted
-                            playsInline
-                            preload="auto"
-                            className="h-full w-full object-cover transition-transform duration-75 ease-out"
-                            style={{
-                              transform: `translate(${editorShiftX * 0.5}%, ${editorShiftY * 0.5}%) scale(${editorZoom})`,
-                              transformOrigin: 'center center',
-                            }}
-                            onLoadedData={(e) => {
-                              const v = e.currentTarget;
-                              if (v) {
-                                v.currentTime = Math.max(0.5, editorTimeSec || 1.5);
-                                const p = v.play();
-                                if (p !== undefined) {
-                                  p.then(() => {
-                                    v.pause();
-                                    v.currentTime = Math.max(0.5, editorTimeSec || 1.5);
-                                  }).catch(() => {});
-                                }
-                              }
-                            }}
-                            onCanPlay={(e) => {
-                              const v = e.currentTarget;
-                              if (v && v.currentTime < 0.2) {
-                                v.currentTime = Math.max(0.5, editorTimeSec || 1.5);
-                              }
-                            }}
-                            onLoadedMetadata={() => {
-                              if (editorVideoRef.current) {
-                                editorVideoRef.current.currentTime = Math.max(0.5, editorTimeSec || 1.5);
-                              }
-                            }}
-                          />
-                          <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-brand/90 text-white font-mono text-[9px] font-bold shadow flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-                            <span>LIVE 60FPS</span>
-                          </div>
-                        </div>
+                    {/* Interactive Video Player / Poster Frame */}
+                    <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black border border-zinc-800 shadow-2xl">
+                      {localVideoBlobUrl ? (
+                        <video
+                          ref={previewVideoRef}
+                          src={localVideoBlobUrl}
+                          controls
+                          playsInline
+                          preload="auto"
+                          className="h-full w-full object-contain bg-black"
+                          onTimeUpdate={(e) => {
+                            setEditorTimeSec(e.currentTarget.currentTime);
+                          }}
+                          onLoadedMetadata={(e) => {
+                            const v = e.currentTarget;
+                            if (v.duration && isFinite(v.duration) && v.duration > 0) {
+                              setDuration(Math.round(v.duration));
+                            }
+                          }}
+                        />
                       ) : (
                         <img
                           src={posterUrl || backdropUrl || '/images/logo.png'}
@@ -2399,13 +2423,79 @@ export default function AdminUpload() {
                           className="h-full w-full object-cover"
                         />
                       )}
-                      <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white">
-                        {isThumbnailEditorOpen ? `⏱️ ${editorTimeSec.toFixed(1)}s` : formatDuration(duration || 1)}
-                      </span>
-                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-black uppercase bg-black/80 text-brand border border-brand/50">
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-black uppercase bg-black/80 text-brand border border-brand/50 pointer-events-none z-10">
                         {tier.toUpperCase()}
                       </span>
                     </div>
+
+                    {/* Instant Frame Capture Button & Custom Image Upload */}
+                    {selectedFile && localVideoBlobUrl && (
+                      <div className="space-y-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleCaptureCurrentPlayerFrame}
+                          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <span>📸</span>
+                          <span>Ambil Detik ({editorTimeSec.toFixed(1)}s) Jadi Thumbnail</span>
+                        </button>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => customImageInputRef.current?.click()}
+                            className="py-2 px-2.5 rounded-lg bg-[#141414] hover:bg-[#1a1a1a] border border-zinc-800 text-zinc-300 hover:text-white text-[11px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            <span>📁</span>
+                            <span>Upload Foto</span>
+                          </button>
+                          <input
+                            ref={customImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleCustomImageSelect}
+                            className="hidden"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextOpen = !isThumbnailEditorOpen;
+                              setIsThumbnailEditorOpen(nextOpen);
+                              if (nextOpen && previewVideoRef.current) {
+                                previewVideoRef.current.currentTime = Math.max(0.1, editorTimeSec);
+                              }
+                            }}
+                            className={`py-2 px-2.5 rounded-lg border text-[11px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              isThumbnailEditorOpen
+                                ? 'bg-brand/10 border-brand/40 text-brand'
+                                : 'bg-[#141414] hover:bg-[#1a1a1a] border-zinc-800 text-zinc-300 hover:text-white'
+                            }`}
+                          >
+                            <span>✂️</span>
+                            <span>{isThumbnailEditorOpen ? 'Tutup Crop' : 'Crop/Zoom'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Active Poster Preview Card */}
+                    {posterUrl && posterUrl !== '/images/logo.png' && (
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#121212] border border-zinc-800/80">
+                        <img
+                          src={posterUrl}
+                          alt="Thumbnail Terpilih"
+                          className="h-12 w-20 rounded-lg object-cover border border-zinc-700 shrink-0 bg-black"
+                        />
+                        <div className="space-y-0.5 truncate text-left">
+                          <p className="text-[11px] font-bold text-white flex items-center gap-1">
+                            <span className="text-emerald-400">✓</span>
+                            <span>Thumbnail Terkunci</span>
+                          </p>
+                          <p className="text-[10px] text-zinc-400">Siap dipublikasikan ke katalog</p>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-1">
                       <h4 className="text-sm font-bold text-white line-clamp-1">
@@ -2427,7 +2517,7 @@ export default function AdminUpload() {
                         <div className="space-y-0.5">
                           <p className="font-bold text-white text-[11px]">Draft Lokal Tersimpan di Memori</p>
                           <p className="text-[10px] text-zinc-400">
-                            Ukuran file: <strong className="text-zinc-200">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</strong>. Video aman diproses lokal tanpa lag. Klik tombol Publish di bawah untuk mulai upload ke cloud.
+                            Ukuran: <strong className="text-zinc-200">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</strong>. Video aman diproses lokal tanpa lag. Klik tombol Publish di bawah untuk mulai upload ke cloud.
                           </p>
                         </div>
                       </div>

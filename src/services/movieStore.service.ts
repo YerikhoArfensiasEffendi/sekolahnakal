@@ -240,62 +240,12 @@ export const movieStore = {
     });
   },
 
-  // Upload video ke ZeroStorage.net (Server proxy + direct fallback)
+  // Upload video langsung ke ZeroStorage.net (Direct Client Cloud CDN Upload)
   async uploadVideoToZeroStorage(
     file: File,
     onProgress?: (percent: number) => void
   ): Promise<{ success: boolean; url?: string; fileId?: string; error?: string }> {
-    return new Promise((resolve) => {
-      const formData = new FormData();
-      formData.append('video', file);
-      const key = this.getZeroStorageApiKey();
-      if (key) {
-        formData.append('apiKey', key);
-      }
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/zerostorage.php?action=upload', true);
-
-      if (onProgress && xhr.upload) {
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const pct = Math.round((e.loaded / e.total) * 100);
-            onProgress(pct);
-          }
-        };
-      }
-
-      xhr.onload = async () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const data = JSON.parse(xhr.responseText);
-            if (data.success && data.url) {
-              resolve({ success: true, url: data.url, fileId: data.fileId });
-              return;
-            }
-          } catch {}
-        }
-
-        // Jika server proxy Hostinger timeout / error (misal batas upload PHP), coba direct upload
-        const directRes = await this.uploadVideoToZeroStorageDirect(file, onProgress);
-        if (directRes.success && directRes.url) {
-          resolve(directRes);
-          return;
-        }
-
-        resolve({
-          success: false,
-          error: directRes.error || `Gagal upload ke ZeroStorage (Status: ${xhr.status}).`,
-        });
-      };
-
-      xhr.onerror = async () => {
-        const directRes = await this.uploadVideoToZeroStorageDirect(file, onProgress);
-        resolve(directRes);
-      };
-
-      xhr.send(formData);
-    });
+    return this.uploadVideoToZeroStorageDirect(file, onProgress);
   },
 
   // Upload video ke Lulustream Cloud
