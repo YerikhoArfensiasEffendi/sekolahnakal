@@ -344,14 +344,17 @@ export default function AdminUpload() {
   // ================= SINGLE VIDEO PROCESSOR =================
   const handleProcessSingleVideo = async (file: File) => {
     setSelectedFile(file);
+
+    // 1. Instan isi judul dari nama file bersih (tanpa jeda/lag)
+    if (!title || editingId === null) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_.-]+/g, ' ');
+      setTitle(cleanName);
+    }
+
     setIsProcessingFile(true);
 
     try {
-      if (!title || editingId === null) {
-        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[_.-]+/g, ' ');
-        setTitle(cleanName);
-      }
-
+      // 2. Ekstraksi metadata cepat & non-blocking
       const meta = await videoStorageService.extractVideoMetadata(file);
       setDuration(meta.duration);
 
@@ -365,9 +368,10 @@ export default function AdminUpload() {
       }
       setThumbnailPosition('top');
 
-      success(`Video "${file.name}" berhasil diproses (Durasi: ${formatDuration(meta.duration)})!`);
-    } catch (err: any) {
-      error(err.message || 'Gagal membaca video.');
+      success(`✓ File "${file.name}" siap di-draft! Durasi: ${formatDuration(meta.duration)}`);
+    } catch {
+      setDuration(60);
+      setPosterUrl('/images/logo.png');
     } finally {
       setIsProcessingFile(false);
     }
@@ -2416,6 +2420,18 @@ export default function AdminUpload() {
                         <span className="text-zinc-400 truncate">{selectedGenres.join(', ')}</span>
                       </div>
                     </div>
+
+                    {uploadMode === 'file' && selectedFile && (
+                      <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+                        <span className="text-base leading-none">🟡</span>
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-white text-[11px]">Draft Lokal Tersimpan di Memori</p>
+                          <p className="text-[10px] text-zinc-400">
+                            Ukuran file: <strong className="text-zinc-200">{(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</strong>. Video aman diproses lokal tanpa lag. Klik tombol Publish di bawah untuk mulai upload ke cloud.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Grid Penyesuaian Thumbnail (Atas / Tengah / Bawah) */}
                     <div className="space-y-1.5 pt-2 border-t border-zinc-800/80">

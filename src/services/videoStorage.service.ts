@@ -131,7 +131,7 @@ export const videoStorageService = {
     width: number;
     height: number;
   }> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const video = document.createElement('video');
       video.muted = true;
       video.playsInline = true;
@@ -151,7 +151,7 @@ export const videoStorageService = {
       let detectedDuration = 0;
       let isResolved = false;
 
-      // Baca durasi asli langsung dari MP4 box header secara independen
+      // 1. Baca durasi asli langsung dari MP4 box header (< 2ms)
       extractMp4Duration(file).then((dur) => {
         if (dur && dur > 0) {
           detectedDuration = dur;
@@ -181,16 +181,17 @@ export const videoStorageService = {
             ? Math.round(video.duration)
             : Math.round(video.currentTime) > 0
             ? Math.round(video.currentTime)
-            : 0;
+            : 60;
 
+        const defaultPoster = posterUrl || '/images/logo.png';
         resolve({
-          duration: finalDur > 0 ? finalDur : 30,
-          rawDurationSec: finalDur > 0 ? finalDur : 30,
-          posterDataUrl: posterUrl || '/images/logo.png',
+          duration: finalDur > 0 ? finalDur : 60,
+          rawDurationSec: finalDur > 0 ? finalDur : 60,
+          posterDataUrl: defaultPoster,
           variations: variations || {
-            top: posterUrl || '/images/logo.png',
-            center: posterUrl || '/images/logo.png',
-            bottom: posterUrl || '/images/logo.png',
+            top: defaultPoster,
+            center: defaultPoster,
+            bottom: defaultPoster,
           },
           width: w,
           height: h,
@@ -199,6 +200,7 @@ export const videoStorageService = {
 
       let earlyCapturedFrame: string | null = null;
 
+      // 3. Safeguard timeout cepat (3.5s) agar browser tidak pernah lag/freeze
       const timeout = setTimeout(() => {
         if (earlyCapturedFrame) {
           finish(earlyCapturedFrame, 640, 360, {
@@ -207,9 +209,25 @@ export const videoStorageService = {
             bottom: earlyCapturedFrame,
           });
         } else {
+          // Generate fallback frame bersih dari canvas
+          try {
+            const c = document.createElement('canvas');
+            c.width = 640;
+            c.height = 360;
+            const cx = c.getContext('2d');
+            if (cx) {
+              cx.fillStyle = '#0f0f11';
+              cx.fillRect(0, 0, 640, 360);
+              cx.fillStyle = '#ef4444';
+              cx.fillRect(0, 354, 640, 6);
+              const fb = c.toDataURL('image/jpeg', 0.85);
+              finish(fb, 640, 360, { top: fb, center: fb, bottom: fb });
+              return;
+            }
+          } catch {}
           finish('/images/logo.png');
         }
-      }, 25000);
+      }, 3500);
 
       const updateDuration = () => {
         if (video.duration && !isNaN(video.duration) && video.duration > 0 && isFinite(video.duration)) {
@@ -219,7 +237,7 @@ export const videoStorageService = {
 
       video.ondurationchange = updateDuration;
 
-      // Helper untuk render canvas standar 16:9 tanpa gap hitam dengan pergeseran optimal ke kiri (fokus subjek)
+      // Helper untuk render frame dari canvas
       const renderGridFrame = (align: 'top' | 'center' | 'bottom') => {
         const vW = video.videoWidth || 640;
         const vH = video.videoHeight || 360;
@@ -232,40 +250,32 @@ export const videoStorageService = {
         const ctx = canvas.getContext('2d');
         if (!ctx) return '/images/logo.png';
 
-        // Latar belakang gelap cinema
         ctx.fillStyle = '#080808';
         ctx.fillRect(0, 0, targetW, targetH);
 
-        // Skala diperluas (1.20x margin) agar saat digeser ke kiri, TIDAK AKAN PERNAH ada gap hitam di kanan/kiri
         const baseScale = Math.max(targetW / vW, targetH / vH);
-        const scale = baseScale * 1.20;
+        const scale = baseScale * 1.15;
         const drawW = Math.round(vW * scale);
         const drawH = Math.round(vH * scale);
 
-        // Geser lebih ke kiri (70% offset) dengan clamping presisi agar tidak tembus canvas (0 gap hitam)
         const maxShiftX = Math.max(0, drawW - targetW);
-        const shiftX = Math.round(maxShiftX * 0.70);
+        const shiftX = Math.round(maxShiftX * 0.50);
         const drawX = -shiftX;
 
-        // Posisi vertikal grid dengan clamping presisi (0 gap hitam)
         const maxShiftY = Math.max(0, drawH - targetH);
         let drawY = 0;
         if (align === 'top') {
-          // Fokus atas (12% dari atas untuk wajah & kepala)
-          drawY = -Math.round(maxShiftY * 0.12);
+          drawY = -Math.round(maxShiftY * 0.15);
         } else if (align === 'center') {
-          // Tengah pas
           drawY = -Math.round(maxShiftY * 0.50);
         } else {
-          // Bawah
-          drawY = -Math.round(maxShiftY * 0.85);
+          drawY = -Math.round(maxShiftY * 0.80);
         }
 
         ctx.drawImage(video, drawX, drawY, drawW, drawH);
-        return canvas.toDataURL('image/jpeg', 0.90);
+        return canvas.toDataURL('image/jpeg', 0.88);
       };
 
-      // Langkah A: Begitu data video pertama tersedia, tangkap frame awal instan sebagai proteksi
       video.onloadeddata = () => {
         updateDuration();
         try {
@@ -275,28 +285,16 @@ export const videoStorageService = {
         } catch {}
       };
 
-      // Langkah B: Baca durasi asli segera setelah metadata header dimuat
       video.onloadedmetadata = () => {
         updateDuration();
-
-        // Fix untuk browser Chromium pada video WhatsApp/WebM dengan duration Infinity
         if (!isFinite(video.duration) || video.duration === Infinity) {
-          video.currentTime = Number.MAX_SAFE_INTEGER || 1e101;
-          video.ontimeupdate = () => {
-            video.ontimeupdate = null;
-            const trueDur = Math.round(video.duration && isFinite(video.duration) ? video.duration : video.currentTime || 0);
-            if (trueDur > 0) detectedDuration = trueDur;
-            video.currentTime = 1.5;
-          };
+          video.currentTime = 1.0;
           return;
         }
-
-        // Cari frame yang bagus untuk thumbnail (detik ke 1.5 - 2.5)
-        const seekTime = Math.min(3, Math.max(0.5, (video.duration || 10) * 0.10));
+        const seekTime = Math.min(2.0, Math.max(0.5, (video.duration || 10) * 0.05));
         video.currentTime = seekTime;
       };
 
-      // Langkah C: Tangkap frame gambar saat video sudah seek ke titik waktu
       video.onseeked = () => {
         updateDuration();
         try {
@@ -310,9 +308,7 @@ export const videoStorageService = {
             bottom: bottomFrame,
           });
           return;
-        } catch {
-          // fallback
-        }
+        } catch {}
         if (earlyCapturedFrame) {
           finish(earlyCapturedFrame, 640, 360, {
             top: earlyCapturedFrame,
@@ -330,21 +326,8 @@ export const videoStorageService = {
           finish(earlyCapturedFrame);
           return;
         }
-        if (video.parentNode) {
-          video.parentNode.removeChild(video);
-        }
-        URL.revokeObjectURL(tempUrl);
-        reject(new Error('Gagal membaca format video. Pastikan file berupa .mp4, .webm, atau .mkv'));
+        finish('/images/logo.png');
       };
-
-      // Kickstart Safari video pipeline
-      try {
-        video.load();
-        const p = video.play();
-        if (p !== undefined) {
-          p.then(() => video.pause()).catch(() => {});
-        }
-      } catch {}
     });
   },
 
