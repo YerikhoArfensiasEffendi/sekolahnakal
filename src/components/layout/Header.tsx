@@ -13,7 +13,9 @@ import { movieStore } from '@/services/movieStore.service';
 
 const NAV_LINKS = [
   { label: 'Beranda', to: ROUTES.HOME },
+  { label: 'Semua Video', to: ROUTES.GALLERY },
   { label: 'Private Server', to: ROUTES.PRIVATE_SERVER, badge: 'VIP' },
+  { label: 'Exclusive Information', to: ROUTES.EXCLUSIVE_INFO, badge: '🔥 INFO' },
 ];
 
 export function Header() {

@@ -87,6 +87,9 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
 
   // Validasi URL preview agar HTML5 video tidak crash/blank hitam
   const previewVideoSource = useMemo(() => {
+    if (movie.previewUrl) {
+      return movie.previewUrl;
+    }
     if (!actualVideoUrl) {
       const numId = parseInt(movie.id, 10) || 1;
       return SAMPLE_PREVIEW_VIDEOS[(numId - 1) % SAMPLE_PREVIEW_VIDEOS.length]!;
@@ -94,12 +97,13 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
     const isPlayableDirect =
       actualVideoUrl.startsWith('blob:') ||
       actualVideoUrl.startsWith('data:') ||
+      actualVideoUrl.startsWith('/uploads/') ||
       /\.(mp4|webm|mov|mkv|m4v)(\?.*)?$/i.test(actualVideoUrl);
     if (isPlayableDirect) return actualVideoUrl;
 
     const numId = parseInt(movie.id, 10) || 1;
     return SAMPLE_PREVIEW_VIDEOS[(numId - 1) % SAMPLE_PREVIEW_VIDEOS.length]!;
-  }, [actualVideoUrl, movie.id]);
+  }, [movie.previewUrl, actualVideoUrl, movie.id]);
 
   const handleMouseEnter = () => {
     if (isLocked || !previewVideoSource) return;

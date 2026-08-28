@@ -4,8 +4,10 @@
  */
 export const ROUTES = {
   HOME: '/',
+  GALLERY: '/gallery',
+  EXCLUSIVE_INFO: '/exclusive-info',
   PRIVATE_SERVER: '/private-server',
-  BROWSE: '/private-server',
+  BROWSE: '/gallery',
   MOVIE_DETAIL: '/movie/:id',
   SEARCH: '/search',
   GENRE: '/genre/:slug',

@@ -153,7 +153,7 @@ export default function Home() {
         <div className="flex-1 max-w-7xl min-w-0 space-y-8">
           {/* Lanjutkan Menonton (Jika Ada History) */}
           {data.continueWatching.length > 0 && (
-            <Section title="Lanjutkan Menonton">
+            <Section title="Lanjutkan Menonton" href="/history">
               <MovieRow movies={data.continueWatching} progressMap={data.progressMap} />
             </Section>
           )}
@@ -167,6 +167,7 @@ export default function Home() {
                   <span>Sedang Tren Sekarang (Traffic Tertinggi)</span>
                 </span>
               }
+              href="/gallery?sort=trending"
             >
               <MovieRow movies={data.trending} />
             </Section>
@@ -181,6 +182,7 @@ export default function Home() {
                   <span>Rekomendasi Video (Acak)</span>
                 </span>
               }
+              href="/gallery"
             >
               <MovieRow movies={data.randomFeed} />
             </Section>
@@ -188,14 +190,14 @@ export default function Home() {
 
           {/* 3. RILIS TERBARU */}
           {data.newReleases.length > 0 && (
-            <Section title="✨ Rilis Terbaru">
+            <Section title="✨ Rilis Terbaru" href="/gallery?sort=new">
               <MovieRow movies={data.newReleases} />
             </Section>
           )}
 
           {/* 4. PALING BANYAK DISUKAI */}
           {data.popular.length > 0 && (
-            <Section title="⭐ Paling Banyak Disukai">
+            <Section title="⭐ Paling Banyak Disukai" href="/gallery?sort=popular">
               <MovieRow movies={data.popular} />
             </Section>
           )}

@@ -14,6 +14,8 @@ import { RouteErrorBoundary } from '@/components/ui/RouteErrorBoundary';
 
 // Lazy-loaded pages biar bundle ringan
 const Home = lazy(() => import('@/pages/Home'));
+const Gallery = lazy(() => import('@/pages/Gallery'));
+const ExclusiveInfo = lazy(() => import('@/pages/ExclusiveInfo'));
 const PrivateServer = lazy(() => import('@/pages/PrivateServer'));
 const Search = lazy(() => import('@/pages/Search'));
 const Genre = lazy(() => import('@/pages/Genre'));
@@ -49,8 +51,10 @@ const routes: RouteObject[] = [
     errorElement: <RouteErrorBoundary />,
     children: [
       { index: true, element: <Lazy><Home /></Lazy> },
+      { path: 'gallery', element: <Lazy><Gallery /></Lazy> },
+      { path: 'exclusive-info', element: <Lazy><ExclusiveInfo /></Lazy> },
       { path: 'private-server', element: <Lazy><PrivateServer /></Lazy> },
-      { path: 'browse', element: <Navigate to="/private-server" replace /> },
+      { path: 'browse', element: <Navigate to="/gallery" replace /> },
       { path: 'movie/:id', element: <Lazy><Watch /></Lazy> },
       { path: 'search', element: <Lazy><Search /></Lazy> },
       { path: 'genre/:slug', element: <Lazy><Genre /></Lazy> },

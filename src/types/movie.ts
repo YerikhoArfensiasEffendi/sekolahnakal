@@ -13,6 +13,7 @@ export interface Movie {
   overview: string;
   tier?: VideoTier;
   videoUrl?: string;
+  previewUrl?: string;
   views?: number;
 }
 
