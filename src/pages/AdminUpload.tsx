@@ -33,8 +33,13 @@ import {
   IconLock,
   IconDiscord,
 } from '@/components/icons';
+import {
+  discordRealtimeService,
+  type DiscordChannelInfo,
+  type DiscordSyncLog,
+} from '@/services/discordRealtime.service';
 
-type StudioTab = 'dashboard' | 'content' | 'upload' | 'categories' | 'ads' | 'settings';
+type StudioTab = 'dashboard' | 'content' | 'upload' | 'discord_realtime' | 'categories' | 'ads' | 'settings';
 
 interface BulkUploadItem {
   id: string;
@@ -281,6 +286,92 @@ export default function AdminUpload() {
       window.removeEventListener('sekolah_nakal_ads_updated', handleAdsUpdate);
     };
   }, [isAuthorized]);
+
+  // ================= 2.1 DISCORD REALTIME & LOGS STATE =================
+  const [discordChannels, setDiscordChannels] = useState<DiscordChannelInfo[]>([]);
+  const [discordLogs, setDiscordLogs] = useState<DiscordSyncLog[]>([]);
+  const [isLoadingDiscordChannels, setIsLoadingDiscordChannels] = useState(false);
+  const [isSyncingDiscord, setIsSyncingDiscord] = useState(false);
+  const [isAutoPollActive, setIsAutoPollActive] = useState(true);
+
+  const loadDiscordChannels = async () => {
+    setIsLoadingDiscordChannels(true);
+    const res = await discordRealtimeService.getChannels();
+    if (res.success) {
+      setDiscordChannels(res.channels);
+    }
+    setIsLoadingDiscordChannels(false);
+  };
+
+  const loadDiscordLogs = async () => {
+    const res = await discordRealtimeService.getLogs();
+    if (res.success) {
+      setDiscordLogs(res.logs);
+    }
+  };
+
+  const handleTriggerRealtimePoll = async () => {
+    setIsSyncingDiscord(true);
+    info('Memeriksa video baru di semua channel Discord...');
+    const res = await discordRealtimeService.pollRealtime();
+    setIsSyncingDiscord(false);
+    await loadDiscordLogs();
+    if (res.success) {
+      if (res.totalNewVideosPublished > 0) {
+        success(`🎉 Ditemukan & dipublikasikan ${res.totalNewVideosPublished} video baru dari Discord!`);
+        refreshData();
+      } else {
+        info('Semua channel Discord sudah up-to-date (tidak ada video baru).');
+      }
+    } else {
+      error('Gagal menjalankan polling Discord. Periksa koneksi server.');
+    }
+  };
+
+  const handleScrapeSingleChannel = async (channelId: string, channelName: string) => {
+    info(`Menarik video dari channel #${channelName}...`);
+    const res = await discordRealtimeService.scrapeChannel(channelId, 25);
+    await loadDiscordLogs();
+    if (res.success) {
+      if (res.publishedCount > 0) {
+        success(`🎉 Sukses mempublikasikan ${res.publishedCount} video dari #${channelName} ke [${res.category}]!`);
+        refreshData();
+      } else {
+        info(`Channel #${channelName} sudah bersih & up-to-date.`);
+      }
+    } else {
+      error(`Gagal menarik video dari #${channelName}.`);
+    }
+  };
+
+  const handleClearDiscordLogs = async () => {
+    if (!window.confirm('Bersihkan riwayat log aktivitas Discord?')) return;
+    const ok = await discordRealtimeService.clearLogs();
+    if (ok) {
+      setDiscordLogs([]);
+      success('Log aktivitas Discord berhasil dibersihkan.');
+    }
+  };
+
+  // Background Auto-Poll Timer (Setiap 8 detik saat Admin aktif)
+  useEffect(() => {
+    if (!isAuthorized) return;
+    loadDiscordChannels();
+    loadDiscordLogs();
+
+    const interval = setInterval(() => {
+      if (isAutoPollActive) {
+        loadDiscordLogs();
+        discordRealtimeService.pollRealtime().then((res) => {
+          if (res.totalNewVideosPublished > 0) {
+            refreshData();
+          }
+        });
+      }
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [isAuthorized, isAutoPollActive]);
 
   const changeTab = (tab: StudioTab) => {
     setActiveTab(tab);
@@ -1328,6 +1419,27 @@ export default function AdminUpload() {
             </button>
 
             <button
+              onClick={() => changeTab('discord_realtime')}
+              className={`w-full group flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'discord_realtime'
+                  ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-white/10'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 shrink-0 text-cyan-400 group-hover:text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                <span>Discord Auto-Sync</span>
+              </div>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <span>Auto</span>
+              </span>
+            </button>
+
+            <button
               onClick={() => changeTab('categories')}
               className={`w-full group flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'categories'
@@ -1425,6 +1537,7 @@ export default function AdminUpload() {
                 {activeTab === 'dashboard' && 'Dashboard Saluran'}
                 {activeTab === 'content' && 'Koleksi Konten & Video'}
                 {activeTab === 'upload' && (editingId ? 'Edit Detail Video' : 'Upload Video & Bulk System')}
+                {activeTab === 'discord_realtime' && '🤖 Discord Realtime Auto-Sync & Logs'}
                 {activeTab === 'categories' && 'Kelola Kategori & Genre'}
                 {activeTab === 'ads' && 'Kelola Iklan & Banner Sayap'}
                 {activeTab === 'settings' && 'Pengaturan Storage & Backup'}
@@ -1446,6 +1559,7 @@ export default function AdminUpload() {
                 <option value="dashboard">Dashboard</option>
                 <option value="content">Konten Video</option>
                 <option value="upload">Upload & Bulk</option>
+                <option value="discord_realtime">Discord Auto-Sync</option>
                 <option value="categories">Kategori</option>
                 <option value="ads">Kelola Iklan</option>
                 <option value="settings">Pengaturan</option>
@@ -2765,6 +2879,265 @@ export default function AdminUpload() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB: DISCORD REALTIME AUTO-SYNC & LIVE LOGS (ADMIN ONLY) */}
+        {/* ========================================================================= */}
+        {activeTab === 'discord_realtime' && (
+          <div className="space-y-8">
+            {/* Top Gateway Live Status Card */}
+            <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-950/20 via-zinc-900/60 to-zinc-900/90 p-5 sm:p-6 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl -z-10" />
+
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500" />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-widest text-cyan-400">
+                      Gateway Real-Time Listener
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      Otomatis 24/7
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                    Sinkronisasi Video Otomatis dari Bot Discord ke Web
+                  </h2>
+                  <p className="text-xs text-zinc-300 max-w-2xl leading-relaxed">
+                    Setiap ada video baru yang dikirim di Text Channel Discord (seperti <code className="text-cyan-300 bg-black/40 px-1 py-0.5 rounded font-mono">#media-lokal</code>, <code className="text-cyan-300 bg-black/40 px-1 py-0.5 rounded font-mono">#media-jepang</code>), sistem akan langsung mengunggahnya ke <strong>ZeroStorage CDN</strong>, membuat kategorinya otomatis, dan menerbitkannya ke web secara real-time tanpa perlu klik manual.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleTriggerRealtimePoll}
+                    disabled={isSyncingDiscord}
+                    className="rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black px-4 py-2.5 text-xs font-black transition-all shadow-lg hover:shadow-cyan-500/20 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    <span className={isSyncingDiscord ? 'animate-spin' : ''}>⚡</span>
+                    <span>{isSyncingDiscord ? 'Memeriksa Discord...' : 'Periksa Pesan Sekarang'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsAutoPollActive(!isAutoPollActive)}
+                    className={`rounded-xl px-3 py-2.5 text-xs font-bold transition-all border flex items-center gap-2 cursor-pointer ${
+                      isAutoPollActive
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                        : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isAutoPollActive ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
+                    <span>Auto-Heartbeat: {isAutoPollActive ? 'ON' : 'OFF'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Mini Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5 mt-5 border-t border-cyan-500/20 text-xs">
+                <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block font-semibold">Server Discord Guild</span>
+                  <span className="font-mono font-bold text-white text-[11px] truncate block">1402615068818145401</span>
+                </div>
+                <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block font-semibold">Target Cloud Storage</span>
+                  <span className="font-bold text-emerald-400 text-[11px] block">ZeroStorage.net (CDN)</span>
+                </div>
+                <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block font-semibold">Channel Media Terdeteksi</span>
+                  <span className="font-bold text-cyan-300 text-[11px] block">
+                    {discordChannels.filter((c) => c.isLikelyMedia).length} Channel Media
+                  </span>
+                </div>
+                <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                  <span className="text-[10px] text-zinc-400 block font-semibold">Total Log Tercatat</span>
+                  <span className="font-bold text-amber-300 text-[11px] block">{discordLogs.length} Aktivitas</span>
+                </div>
+              </div>
+            </div>
+
+            {/* LIVE REAL-TIME TERMINAL LOG CONSOLE */}
+            <div className="rounded-2xl border border-zinc-800 bg-[#0c0c0e] shadow-2xl overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#141416] border-b border-zinc-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-red-500/80 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
+                    <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
+                  </div>
+                  <span className="text-xs font-mono font-bold text-zinc-200 ml-2">
+                    terminal@sekolah-nakal: ~/discord-gateway-live.log
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadDiscordLogs}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 transition-colors cursor-pointer"
+                  >
+                    🔄 Refresh
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearDiscordLogs}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-mono text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 transition-colors cursor-pointer"
+                  >
+                    🧹 Bersihkan Log
+                  </button>
+                </div>
+              </div>
+
+              {/* Terminal Logs Body */}
+              <div
+                className="p-4 sm:p-5 font-mono text-xs max-h-[380px] overflow-y-auto space-y-2 select-text bg-[#09090b]"
+                style={{ scrollbarWidth: 'thin' }}
+              >
+                {discordLogs.length === 0 ? (
+                  <div className="py-12 text-center text-zinc-500 space-y-2">
+                    <div className="text-2xl opacity-40">📡</div>
+                    <p>Belum ada riwayat aktivitas terbaru. Kirim video di Discord untuk melihat log real-time di sini.</p>
+                  </div>
+                ) : (
+                  discordLogs.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-2.5 rounded-lg border leading-relaxed flex flex-col sm:flex-row sm:items-start justify-between gap-2 ${
+                        item.level === 'success'
+                          ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300'
+                          : item.level === 'upload'
+                          ? 'border-cyan-500/30 bg-cyan-500/5 text-cyan-300'
+                          : item.level === 'error'
+                          ? 'border-red-500/30 bg-red-500/5 text-red-300'
+                          : item.level === 'warning'
+                          ? 'border-amber-500/30 bg-amber-500/5 text-amber-300'
+                          : 'border-zinc-800/80 bg-zinc-900/40 text-zinc-300'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                              item.level === 'success'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : item.level === 'upload'
+                                ? 'bg-cyan-500/20 text-cyan-300'
+                                : item.level === 'error'
+                                ? 'bg-red-500/20 text-red-300'
+                                : item.level === 'warning'
+                                ? 'bg-amber-500/20 text-amber-300'
+                                : 'bg-zinc-800 text-zinc-400'
+                            }`}
+                          >
+                            {item.level}
+                          </span>
+                          <span className="text-[10px] text-zinc-500 font-normal">
+                            {item.timestamp}
+                          </span>
+                        </div>
+                        <p className="text-xs font-medium text-white">{item.message}</p>
+                      </div>
+
+                      {item.meta && (
+                        <div className="text-[10px] text-zinc-400 bg-black/40 px-2 py-1 rounded border border-white/5 shrink-0 self-start">
+                          {Object.entries(item.meta).map(([k, v]) => (
+                            <div key={k} className="flex items-center gap-1.5">
+                              <span className="text-zinc-500 uppercase">{k}:</span>
+                              <span className="text-zinc-200 truncate max-w-[200px]">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* CHANNEL LIST & MANUAL SCRAPE CONTROLS */}
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <span>📺 Daftar Text Channel Media di Server Discord</span>
+                  </h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Nama channel otomatis dijadikan Kategori, dan tier video disesuaikan berdasarkan kategori induk Discord.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={loadDiscordChannels}
+                  disabled={isLoadingDiscordChannels}
+                  className="rounded-lg border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className={isLoadingDiscordChannels ? 'animate-spin' : ''}>🔄</span>
+                  <span>Refresh Channel</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {discordChannels
+                  .filter((c) => c.isLikelyMedia)
+                  .map((chan) => (
+                    <div
+                      key={chan.id}
+                      className="rounded-xl border border-zinc-800 bg-[#121214] p-4 flex flex-col justify-between gap-3 hover:border-zinc-700 transition-colors"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-cyan-400 font-mono text-sm">#</span>
+                            <h4 className="text-xs font-bold text-white truncate">{chan.name}</h4>
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase shrink-0 border ${
+                              chan.detectedTier === 'vvip'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                : chan.detectedTier === 'vip'
+                                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                            }`}
+                          >
+                            {chan.detectedTier}
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] space-y-1 text-zinc-400">
+                          <div className="flex items-center justify-between">
+                            <span>Induk Discord:</span>
+                            <span className="text-zinc-300 font-medium truncate max-w-[140px]">
+                              {chan.parentName}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Kategori Web:</span>
+                            <span className="text-cyan-300 font-bold bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-800/40">
+                              {chan.cleanCategory}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleScrapeSingleChannel(chan.id, chan.name)}
+                        className="w-full rounded-lg bg-zinc-850 hover:bg-cyan-500 hover:text-black border border-zinc-750 px-3 py-1.5 text-xs font-bold text-zinc-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>⚡</span>
+                        <span>Sync Channel Ini</span>
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         )}
 

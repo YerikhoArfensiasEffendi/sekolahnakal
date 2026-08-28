@@ -348,5 +348,638 @@ if ($action === 'verify_oauth_user') {
     exit;
 }
 
+// 5. Helper Functions for Real-Time Scraping & ZeroStorage Auto-Pipeline
+
+$stateFile = __DIR__ . '/data/discord_sync_state.json';
+$logsFile = __DIR__ . '/data/discord_sync_logs.json';
+$categoriesFile = __DIR__ . '/data/categories.json';
+$moviesFile = __DIR__ . '/data/movies.json';
+$defaultZeroKey = 'sk_WLh9zdZcVOf3GA7L_MFbS_IPMqzz7Iv3';
+
+function getZeroStorageApiKey() {
+    global $configPath, $defaultZeroKey;
+    if (file_exists($configPath)) {
+        $cfg = json_decode(file_get_contents($configPath), true);
+        if (!empty($cfg['zerostorage_api_key'])) {
+            return $cfg['zerostorage_api_key'];
+        }
+    }
+    return $defaultZeroKey;
+}
+
+function appendSyncLog($level, $message, $meta = []) {
+    global $logsFile;
+    $dir = dirname($logsFile);
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+    $logs = [];
+    if (file_exists($logsFile)) {
+        $logs = json_decode(file_get_contents($logsFile), true) ?: [];
+    }
+
+    $entry = [
+        'id' => uniqid('log_', true),
+        'timestamp' => date('Y-m-d H:i:s'),
+        'level' => $level, // 'info', 'success', 'warning', 'error', 'upload'
+        'message' => $message,
+        'meta' => $meta
+    ];
+
+    array_unshift($logs, $entry);
+    // Keep max 300 logs
+    if (count($logs) > 300) {
+        $logs = array_slice($logs, 0, 300);
+    }
+    file_put_contents($logsFile, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+function cleanChannelName($rawName) {
+    // Remove Discord decorative unicode brackets & symbols
+    $cleaned = preg_replace('/[⌜⌟⇾→#\|]/u', '', $rawName);
+    // Remove emojis
+    $cleaned = preg_replace('/[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{1F700}-\x{1F77F}\x{1F780}-\x{1F7FF}\x{1F800}-\x{1F8FF}\x{1F900}-\x{1F9FF}\x{1FA00}-\x{1FA6F}\x{1FA70}-\x{1FAFF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]/u', '', $cleaned);
+    $cleaned = trim(str_replace(['-', '_'], ' ', $cleaned));
+    return ucwords(strtolower($cleaned)) ?: 'Umum';
+}
+
+function detectTierFromParent($parentName, $channelName) {
+    $combined = strtoupper($parentName . ' ' . $channelName);
+    if (strpos($combined, 'VVIP') !== false || strpos($combined, 'UNCENSORED') !== false) {
+        return 'vvip';
+    }
+    if (strpos($combined, 'EXCLUSIF') !== false || strpos($combined, 'BOOSTER') !== false || strpos($combined, 'VIP') !== false) {
+        return 'vip';
+    }
+    return 'regular';
+}
+
+function uploadDiscordAttachmentToZeroStorage($attachmentUrl, $fileName, $title) {
+    $apiKey = getZeroStorageApiKey();
+    $tmpDir = sys_get_temp_dir();
+    $ext = pathinfo($fileName, PATHINFO_EXTENSION) ?: 'mp4';
+    $tmpFile = $tmpDir . '/sn_discord_' . uniqid() . '.' . $ext;
+
+    // 1. Download file from Discord CDN
+    $fp = fopen($tmpFile, 'w+');
+    $ch = curl_init($attachmentUrl);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
+    curl_setopt($ch, CURLOPT_FILE, $fp);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
+    curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    fclose($fp);
+
+    if ($httpCode !== 200 || !file_exists($tmpFile) || filesize($tmpFile) < 100) {
+        @unlink($tmpFile);
+        return ['success' => false, 'error' => "Gagal mengunduh file video dari Discord (HTTP {$httpCode})."];
+    }
+
+    // 2. Upload to ZeroStorage
+    $uploadUrl = 'https://upload.zerostorage.net/api/upload/universal';
+    $mime = mime_content_type($tmpFile) ?: 'video/mp4';
+    $cfile = new CURLFile($tmpFile, $mime, $fileName);
+
+    $postData = [
+        'file' => $cfile,
+        'title' => $title ?: pathinfo($fileName, PATHINFO_FILENAME)
+    ];
+
+    $chUp = curl_init();
+    curl_setopt($chUp, CURLOPT_URL, $uploadUrl);
+    curl_setopt($chUp, CURLOPT_POST, true);
+    curl_setopt($chUp, CURLOPT_POSTFIELDS, $postData);
+    curl_setopt($chUp, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($chUp, CURLOPT_HTTPHEADER, ["x-api-key: {$apiKey}"]);
+    curl_setopt($chUp, CURLOPT_TIMEOUT, 600); // 10 minutes max
+    $response = curl_exec($chUp);
+    $upHttpCode = curl_getinfo($chUp, CURLINFO_HTTP_CODE);
+    curl_close($chUp);
+    @unlink($tmpFile);
+
+    if ($upHttpCode >= 200 && $upHttpCode < 300) {
+        $resData = json_decode($response, true);
+        if ($resData && !empty($resData['success'])) {
+            $embedUrl = $resData['embedUrl'] ?? null;
+            if (!$embedUrl && !empty($resData['fileId'])) {
+                $embedUrl = 'https://zerostorage.net/embed/' . $resData['fileId'];
+            } elseif (!$embedUrl && !empty($resData['viewUrl'])) {
+                $embedUrl = str_replace('/watch/', '/embed/', $resData['viewUrl']);
+            }
+            return [
+                'success' => true,
+                'embedUrl' => $embedUrl,
+                'fileId' => $resData['fileId'] ?? '',
+                'size' => $resData['size'] ?? 0
+            ];
+        }
+        return ['success' => false, 'error' => $resData['error'] ?? 'Gagal memproses respons ZeroStorage.'];
+    }
+
+    return ['success' => false, 'error' => "Koneksi upload ZeroStorage gagal (HTTP {$upHttpCode})."];
+}
+
+function ensureCategoryExists($categoryName) {
+    global $categoriesFile;
+    $dir = dirname($categoriesFile);
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+    $categories = [];
+    if (file_exists($categoriesFile)) {
+        $categories = json_decode(file_get_contents($categoriesFile), true) ?: [];
+    }
+
+    foreach ($categories as $c) {
+        if (strcasecmp(trim($c['name']), trim($categoryName)) === 0) {
+            return; // Already exists
+        }
+    }
+
+    $newCategory = [
+        'id' => strtolower(preg_replace('/[^a-z0-9]+/i', '-', trim($categoryName))),
+        'name' => trim($categoryName),
+        'description' => "Koleksi konten video {$categoryName} Sekolah Nakal",
+        'isLocked' => false,
+        'order' => count($categories) + 1,
+        'createdAt' => date('c')
+    ];
+    $categories[] = $newCategory;
+    file_put_contents($categoriesFile, json_encode($categories, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+function saveMovieToDatabase($movieData) {
+    global $moviesFile;
+    $dir = dirname($moviesFile);
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+    $movies = [];
+    if (file_exists($moviesFile)) {
+        $movies = json_decode(file_get_contents($moviesFile), true) ?: [];
+    }
+
+    // Check duplicate by discordMsgId or title + category
+    foreach ($movies as $m) {
+        if (!empty($movieData['discordMsgId']) && !empty($m['discordMsgId']) && $m['discordMsgId'] === $movieData['discordMsgId']) {
+            return false; // Already imported
+        }
+        if (!empty($movieData['videoUrl']) && !empty($m['videoUrl']) && $m['videoUrl'] === $movieData['videoUrl']) {
+            return false; // Exact same video URL
+        }
+    }
+
+    array_unshift($movies, $movieData);
+    file_put_contents($moviesFile, json_encode($movies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    return true;
+}
+
+// 6. Get Discord Channels with Category & Tier Mapping
+if ($action === 'get_channels') {
+    $res = discordApiRequest("/guilds/{$GUILD_ID}/channels", $BOT_TOKEN);
+    if ($res['code'] !== 200 || !is_array($res['data'])) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Gagal mengambil daftar channel dari Discord API.', 'details' => $res]);
+        exit;
+    }
+
+    $all = $res['data'];
+    $categoriesMap = [];
+    foreach ($all as $c) {
+        if ($c['type'] === 4) { // Guild Category
+            $categoriesMap[$c['id']] = $c['name'];
+        }
+    }
+
+    $mediaChannels = [];
+    foreach ($all as $c) {
+        if ($c['type'] === 0) { // Text Channel
+            $parentName = $categoriesMap[$c['parent_id'] ?? ''] ?? 'General';
+            $cleanedCategory = cleanChannelName($c['name']);
+            $tier = detectTierFromParent($parentName, $c['name']);
+            $isLikelyMedia = (
+                strpos(strtolower($c['name']), 'media') !== false ||
+                strpos(strtolower($c['name']), 'leak') !== false ||
+                strpos(strtolower($c['name']), 'video') !== false ||
+                strpos(strtolower($c['name']), 'uncensored') !== false ||
+                strpos(strtolower($parentName), 'media') !== false ||
+                strpos(strtolower($parentName), 'exclusif') !== false
+            );
+
+            $mediaChannels[] = [
+                'id' => $c['id'],
+                'name' => $c['name'],
+                'cleanCategory' => $cleanedCategory,
+                'parentId' => $c['parent_id'] ?? null,
+                'parentName' => $parentName,
+                'detectedTier' => $tier,
+                'position' => $c['position'] ?? 0,
+                'isLikelyMedia' => $isLikelyMedia,
+                'nsfw' => !empty($c['nsfw'])
+            ];
+        }
+    }
+
+    // Sort by position
+    usort($mediaChannels, function($a, $b) {
+        if ($a['isLikelyMedia'] !== $b['isLikelyMedia']) return $b['isLikelyMedia'] ? 1 : -1;
+        return $a['position'] - $b['position'];
+    });
+
+    echo json_encode([
+        'success' => true,
+        'channels' => $mediaChannels,
+        'total' => count($mediaChannels),
+        'mediaCount' => count(array_filter($mediaChannels, fn($c) => $c['isLikelyMedia']))
+    ]);
+    exit;
+}
+
+// 7. Poll & Real-Time Sync Media Channels (ZeroStorage Auto-Upload)
+if ($action === 'poll_realtime' || $action === 'cron_sync') {
+    // 1. Get all guild channels
+    $chanRes = discordApiRequest("/guilds/{$GUILD_ID}/channels", $BOT_TOKEN);
+    if ($chanRes['code'] !== 200 || !is_array($chanRes['data'])) {
+        appendSyncLog('error', 'Gagal menyambung ke Discord Gateway untuk polling realtime.');
+        echo json_encode(['error' => 'Gagal mengambil channels.', 'details' => $chanRes]);
+        exit;
+    }
+
+    $all = $chanRes['data'];
+    $catMap = [];
+    foreach ($all as $c) {
+        if ($c['type'] === 4) $catMap[$c['id']] = $c['name'];
+    }
+
+    // Target media channels
+    $targetChannels = [];
+    foreach ($all as $c) {
+        if ($c['type'] === 0) {
+            $parentName = $catMap[$c['parent_id'] ?? ''] ?? '';
+            $isMedia = (
+                strpos(strtolower($c['name']), 'media') !== false ||
+                strpos(strtolower($c['name']), 'leak') !== false ||
+                strpos(strtolower($parentName), 'media') !== false ||
+                strpos(strtolower($parentName), 'exclusif') !== false
+            );
+            if ($isMedia) {
+                $targetChannels[] = [
+                    'id' => $c['id'],
+                    'name' => $c['name'],
+                    'parentName' => $parentName,
+                    'category' => cleanChannelName($c['name']),
+                    'tier' => detectTierFromParent($parentName, $c['name'])
+                ];
+            }
+        }
+    }
+
+    // Load state
+    $state = [];
+    if (file_exists($stateFile)) {
+        $state = json_decode(file_get_contents($stateFile), true) ?: [];
+    }
+
+    $totalProcessed = 0;
+    $totalUploaded = 0;
+    $syncedItems = [];
+
+    foreach ($targetChannels as $chan) {
+        $chanId = $chan['id'];
+        $lastId = $state[$chanId] ?? null;
+
+        // Fetch recent messages
+        $limit = $lastId ? 25 : 15; // If first run, fetch last 15, else fetch recent
+        $endpoint = "/channels/{$chanId}/messages?limit={$limit}";
+        if ($lastId) {
+            $endpoint .= "&after={$lastId}";
+        }
+
+        $msgRes = discordApiRequest($endpoint, $BOT_TOKEN);
+        if ($msgRes['code'] !== 200 || !is_array($msgRes['data'])) {
+            continue;
+        }
+
+        $messages = $msgRes['data'];
+        if (empty($messages)) continue;
+
+        // Process from oldest to newest
+        usort($messages, fn($a, $b) => strcmp($a['id'], $b['id']));
+
+        foreach ($messages as $msg) {
+            $msgId = $msg['id'];
+            $content = trim($msg['content'] ?? '');
+            $attachments = $msg['attachments'] ?? [];
+            $state[$chanId] = $msgId; // update last seen
+
+            // Find video attachment or external link
+            $videoAttachment = null;
+            $imageAttachment = null;
+
+            foreach ($attachments as $att) {
+                $cType = strtolower($att['content_type'] ?? '');
+                $fName = strtolower($att['filename'] ?? '');
+                if (
+                    strpos($cType, 'video') !== false ||
+                    preg_match('/\.(mp4|mov|mkv|webm|m4v)$/i', $fName)
+                ) {
+                    if (!$videoAttachment) $videoAttachment = $att;
+                } elseif (
+                    strpos($cType, 'image') !== false ||
+                    preg_match('/\.(jpg|jpeg|png|webp)$/i', $fName)
+                ) {
+                    if (!$imageAttachment) $imageAttachment = $att;
+                }
+            }
+
+            // Check external video link in content if no video attachment
+            $externalVideoUrl = null;
+            if (!$videoAttachment && !empty($content)) {
+                if (preg_match('/(https?:\/\/[^\s]+)/i', $content, $mUrl)) {
+                    $u = $mUrl[1];
+                    if (
+                        strpos($u, 'zerostorage.net') !== false ||
+                        strpos($u, 'luluvdo.com') !== false ||
+                        strpos($u, 'lulustream.com') !== false ||
+                        strpos($u, 'dood') !== false ||
+                        strpos($u, 'streamtape') !== false ||
+                        preg_match('/\.(mp4|m3u8|webm)$/i', $u)
+                    ) {
+                        $externalVideoUrl = $u;
+                    }
+                }
+            }
+
+            if (!$videoAttachment && !$externalVideoUrl) {
+                continue; // No video in this message
+            }
+
+            $totalProcessed++;
+
+            // Clean Title
+            $title = '';
+            if (!empty($content) && !filter_var($content, FILTER_VALIDATE_URL)) {
+                $firstLine = explode("\n", $content)[0];
+                $title = trim(preg_replace('/https?:\/\/[^\s]+/', '', $firstLine));
+            }
+            if (empty($title)) {
+                $rawFile = $videoAttachment ? $videoAttachment['filename'] : 'Video ' . date('Ymd');
+                $title = trim(str_replace(['_', '-'], ' ', pathinfo($rawFile, PATHINFO_FILENAME)));
+                $title = preg_replace('/\s+/', ' ', $title);
+                $title = ucwords($title);
+            }
+
+            // 1. Process Video Source
+            $finalVideoUrl = '';
+            if ($videoAttachment) {
+                appendSyncLog('upload', "⚡ Mengunggah video \"{$title}\" dari #{$chan['name']} ke ZeroStorage CDN...", [
+                    'channel' => $chan['name'],
+                    'file' => $videoAttachment['filename'],
+                    'size' => round(($videoAttachment['size'] ?? 0) / 1048576, 2) . ' MB'
+                ]);
+
+                $upResult = uploadDiscordAttachmentToZeroStorage(
+                    $videoAttachment['url'],
+                    $videoAttachment['filename'],
+                    $title
+                );
+
+                if ($upResult['success'] && !empty($upResult['embedUrl'])) {
+                    $finalVideoUrl = $upResult['embedUrl'];
+                } else {
+                    appendSyncLog('error', "Gagal upload ZeroStorage: " . ($upResult['error'] ?? 'Unknown error'), [
+                        'channel' => $chan['name'],
+                        'title' => $title
+                    ]);
+                    continue; // Skip saving empty video
+                }
+            } elseif ($externalVideoUrl) {
+                $finalVideoUrl = $externalVideoUrl;
+            }
+
+            if (empty($finalVideoUrl)) continue;
+
+            // 2. Poster
+            $posterUrl = $imageAttachment ? $imageAttachment['url'] : '/images/logo.png';
+
+            // 3. Ensure Category Exists
+            ensureCategoryExists($chan['category']);
+
+            // 4. Save Movie
+            $newMovie = [
+                'id' => (string)time() . rand(100, 999),
+                'title' => $title,
+                'slug' => strtolower(preg_replace('/[^a-z0-9]+/i', '-', $title)) . '-' . rand(10, 99),
+                'genres' => [$chan['category']],
+                'tier' => $chan['tier'],
+                'duration' => rand(15, 60),
+                'year' => (int)date('Y'),
+                'rating' => 9.0,
+                'overview' => !empty($content) ? $content : "Konten eksklusif {$chan['category']} dipublikasikan secara otomatis melalui Discord Bot Sekolah Nakal.",
+                'posterUrl' => $posterUrl,
+                'backdropUrl' => $posterUrl,
+                'videoUrl' => $finalVideoUrl,
+                'discordMsgId' => $msgId,
+                'discordChannelId' => $chanId,
+                'syncedAt' => date('c')
+            ];
+
+            $saved = saveMovieToDatabase($newMovie);
+            if ($saved) {
+                $totalUploaded++;
+                $syncedItems[] = $newMovie;
+                appendSyncLog('success', "🎉 Sukses mempublikasikan \"{$title}\" ke Kategori [{$chan['category']}] (Tier: " . strtoupper($chan['tier']) . ")", [
+                    'title' => $title,
+                    'category' => $chan['category'],
+                    'tier' => $chan['tier'],
+                    'embedUrl' => $finalVideoUrl
+                ]);
+            }
+        }
+    }
+
+    // Save updated state
+    file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+    echo json_encode([
+        'success' => true,
+        'timestamp' => date('c'),
+        'totalScannedChannels' => count($targetChannels),
+        'totalMessagesChecked' => $totalProcessed,
+        'totalNewVideosPublished' => $totalUploaded,
+        'syncedItems' => $syncedItems
+    ]);
+    exit;
+}
+
+// 8. Get Live Activity Logs (For Admin Studio)
+if ($action === 'get_logs') {
+    $logs = [];
+    if (file_exists($logsFile)) {
+        $logs = json_decode(file_get_contents($logsFile), true) ?: [];
+    }
+    echo json_encode([
+        'success' => true,
+        'logs' => $logs,
+        'count' => count($logs),
+        'lastChecked' => date('c')
+    ]);
+    exit;
+}
+
+// 9. Clear Logs
+if ($action === 'clear_logs' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    file_put_contents($logsFile, json_encode([], JSON_PRETTY_PRINT));
+    echo json_encode(['success' => true, 'message' => 'Log aktivitas Discord berhasil dibersihkan.']);
+    exit;
+}
+
+// 10. Scrape Specific Channel on Demand
+if ($action === 'scrape_channel') {
+    $channelId = trim($_GET['channel_id'] ?? ($_POST['channel_id'] ?? ''));
+    $limit = min(50, max(1, (int)($_GET['limit'] ?? 20)));
+
+    if (empty($channelId)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Channel ID Discord diperlukan.']);
+        exit;
+    }
+
+    // Get channel details
+    $chanInfoRes = discordApiRequest("/channels/{$channelId}", $BOT_TOKEN);
+    $chanName = 'Media Channel';
+    $parentName = 'General';
+    if ($chanInfoRes['code'] === 200 && is_array($chanInfoRes['data'])) {
+        $chanName = $chanInfoRes['data']['name'] ?? $chanName;
+    }
+
+    $categoryName = cleanChannelName($chanName);
+    $tier = detectTierFromParent($parentName, $chanName);
+
+    // Fetch messages
+    $msgRes = discordApiRequest("/channels/{$channelId}/messages?limit={$limit}", $BOT_TOKEN);
+    if ($msgRes['code'] !== 200 || !is_array($msgRes['data'])) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Gagal membaca pesan dari channel ini.', 'details' => $msgRes]);
+        exit;
+    }
+
+    $messages = $msgRes['data'];
+    $synced = 0;
+    $syncedItems = [];
+
+    appendSyncLog('info', "Memulai penarikan manual channel #{$chanName} (Kategori: {$categoryName}, Limit: {$limit} pesan)...");
+
+    foreach ($messages as $msg) {
+        $msgId = $msg['id'];
+        $content = trim($msg['content'] ?? '');
+        $attachments = $msg['attachments'] ?? [];
+
+        $videoAttachment = null;
+        $imageAttachment = null;
+
+        foreach ($attachments as $att) {
+            $cType = strtolower($att['content_type'] ?? '');
+            $fName = strtolower($att['filename'] ?? '');
+            if (strpos($cType, 'video') !== false || preg_match('/\.(mp4|mov|mkv|webm|m4v)$/i', $fName)) {
+                if (!$videoAttachment) $videoAttachment = $att;
+            } elseif (strpos($cType, 'image') !== false || preg_match('/\.(jpg|jpeg|png|webp)$/i', $fName)) {
+                if (!$imageAttachment) $imageAttachment = $att;
+            }
+        }
+
+        $externalVideoUrl = null;
+        if (!$videoAttachment && !empty($content)) {
+            if (preg_match('/(https?:\/\/[^\s]+)/i', $content, $mUrl)) {
+                $u = $mUrl[1];
+                if (
+                    strpos($u, 'zerostorage.net') !== false ||
+                    strpos($u, 'luluvdo.com') !== false ||
+                    strpos($u, 'lulustream.com') !== false ||
+                    strpos($u, 'dood') !== false ||
+                    strpos($u, 'streamtape') !== false ||
+                    preg_match('/\.(mp4|m3u8|webm)$/i', $u)
+                ) {
+                    $externalVideoUrl = $u;
+                }
+            }
+        }
+
+        if (!$videoAttachment && !$externalVideoUrl) continue;
+
+        // Title
+        $title = '';
+        if (!empty($content) && !filter_var($content, FILTER_VALIDATE_URL)) {
+            $firstLine = explode("\n", $content)[0];
+            $title = trim(preg_replace('/https?:\/\/[^\s]+/', '', $firstLine));
+        }
+        if (empty($title)) {
+            $rawFile = $videoAttachment ? $videoAttachment['filename'] : 'Video ' . date('Ymd');
+            $title = trim(str_replace(['_', '-'], ' ', pathinfo($rawFile, PATHINFO_FILENAME)));
+            $title = ucwords($title);
+        }
+
+        $finalVideoUrl = '';
+        if ($videoAttachment) {
+            appendSyncLog('upload', "⚡ Mengunggah \"{$title}\" dari #{$chanName} ke ZeroStorage...", [
+                'file' => $videoAttachment['filename'],
+                'size' => round(($videoAttachment['size'] ?? 0) / 1048576, 2) . ' MB'
+            ]);
+
+            $upResult = uploadDiscordAttachmentToZeroStorage(
+                $videoAttachment['url'],
+                $videoAttachment['filename'],
+                $title
+            );
+
+            if ($upResult['success'] && !empty($upResult['embedUrl'])) {
+                $finalVideoUrl = $upResult['embedUrl'];
+            }
+        } elseif ($externalVideoUrl) {
+            $finalVideoUrl = $externalVideoUrl;
+        }
+
+        if (empty($finalVideoUrl)) continue;
+
+        $posterUrl = $imageAttachment ? $imageAttachment['url'] : '/images/logo.png';
+        ensureCategoryExists($categoryName);
+
+        $newMovie = [
+            'id' => (string)time() . rand(100, 999),
+            'title' => $title,
+            'slug' => strtolower(preg_replace('/[^a-z0-9]+/i', '-', $title)) . '-' . rand(10, 99),
+            'genres' => [$categoryName],
+            'tier' => $tier,
+            'duration' => rand(15, 60),
+            'year' => (int)date('Y'),
+            'rating' => 9.0,
+            'overview' => !empty($content) ? $content : "Konten eksklusif {$categoryName} Sekolah Nakal.",
+            'posterUrl' => $posterUrl,
+            'backdropUrl' => $posterUrl,
+            'videoUrl' => $finalVideoUrl,
+            'discordMsgId' => $msgId,
+            'discordChannelId' => $channelId,
+            'syncedAt' => date('c')
+        ];
+
+        $saved = saveMovieToDatabase($newMovie);
+        if ($saved) {
+            $synced++;
+            $syncedItems[] = $newMovie;
+            appendSyncLog('success', "✅ Sukses publikasi \"{$title}\" ke [{$categoryName}]", ['embedUrl' => $finalVideoUrl]);
+        }
+    }
+
+    echo json_encode([
+        'success' => true,
+        'channelName' => $chanName,
+        'category' => $categoryName,
+        'tier' => $tier,
+        'publishedCount' => $synced,
+        'items' => $syncedItems
+    ]);
+    exit;
+}
+
 http_response_code(400);
 echo json_encode(['error' => 'Aksi tidak valid.']);
+
