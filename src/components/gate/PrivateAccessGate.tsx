@@ -1,12 +1,11 @@
 /**
- * Panel Masuk & Sinkronisasi Discord (Sekolah Nakal)
+ * Panel Masuk Gerbang Akses Streaming (Sekolah Nakal)
  * Dibikin oleh: beone - sekolah nakal web dev
  */
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useSiteGate } from '@/contexts/SiteGateContext';
 import { DISCORD_BOT_INVITE_URL, TELEGRAM_INVITE_URL } from '@/utils/tier';
-import { getDiscordOAuthUrl, launchDiscordOAuth } from '@/utils/discordOAuth';
 import { IconDiscord, IconTelegram } from '@/components/icons';
 
 export function PrivateAccessGate() {
@@ -19,31 +18,19 @@ export function PrivateAccessGate() {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 select-none bg-[#C9323B] overflow-hidden">
-      {/* Full-Screen Subtle Blurry Red Logo Backdrop */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden select-none flex items-center justify-center">
-        <img
-          src="/images/logo.png"
-          alt="Sekolah Nakal Backdrop"
-          className="w-full h-full object-cover object-center scale-105 blur-[6px] transform-gpu"
-        />
-        {/* Subtle Dark Vignette */}
-        <div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" />
-      </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 select-none bg-[#09090b] overflow-hidden">
+      {/* Subtle Ambient Radial Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[500px] rounded-full bg-brand/10 blur-[140px] pointer-events-none" />
 
-      {/* Ambient Accent Lights */}
-      <div className="absolute top-1/4 -left-20 h-96 w-96 rounded-full bg-[#5865F2]/20 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 h-96 w-96 rounded-full bg-brand/20 blur-3xl pointer-events-none" />
-
-      {/* Semi-Transparent Access Modal Card */}
-      <div className="relative my-auto w-full max-w-md rounded-2xl bg-[#121318]/70 border border-white/10 p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.75)] backdrop-blur-xl text-text-primary animate-in fade-in zoom-in-95 text-center ring-1 ring-white/10">
+      {/* Access Modal Card */}
+      <div className="relative my-auto w-full max-w-md rounded-2xl bg-[#121215] border border-white/10 p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-text-primary animate-in fade-in zoom-in-95 text-center">
         {/* Header Brand */}
-        <div className="space-y-2 mb-7">
-          <div className="flex justify-center mb-4">
+        <div className="space-y-2 mb-6">
+          <div className="flex justify-center mb-3">
             <img
               src="/images/logo.png"
               alt="Sekolah Nakal"
-              className="h-16 w-auto object-contain drop-shadow-2xl"
+              className="h-16 w-auto object-contain drop-shadow-xl"
             />
           </div>
 
@@ -62,46 +49,37 @@ export function PrivateAccessGate() {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="space-y-2.5">
-          {/* Main Discord OAuth Button */}
-          <a
-            href={getDiscordOAuthUrl()}
-            onClick={(e) => {
-              e.preventDefault();
-              launchDiscordOAuth();
-            }}
-            className="w-full py-3.5 px-4 rounded-xl bg-[#5865F2] hover:bg-[#4752C4] active:scale-[0.98] text-white font-bold text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-[#5865F2]/25 transition-all cursor-pointer select-none"
-          >
-            <IconDiscord className="w-5 h-5" />
-            <span>Masuk dengan Discord</span>
-          </a>
-
-          {/* Smaller Guest Mode Button */}
+        {/* Primary Action Button: Masuk sebagai Tamu */}
+        <div className="space-y-3">
           <button
             type="button"
             onClick={handleGuestEnter}
-            className="w-full py-2 px-3 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] text-xs font-medium transition-colors cursor-pointer"
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-brand to-red-700 hover:from-red-600 hover:to-red-800 active:scale-[0.98] text-white font-bold text-sm shadow-lg shadow-brand/25 transition-all cursor-pointer select-none flex items-center justify-center gap-2"
           >
-            Masuk sebagai Tamu
+            <span>Masuk sebagai Tamu</span>
+            <span>→</span>
           </button>
+
+          <p className="text-[10px] text-zinc-500 leading-relaxed px-2">
+            💡 Untuk sinkronisasi role VIP/VVIP Discord, masuk sebagai tamu lalu hubungkan akun melalui menu <strong>Pengaturan</strong>.
+          </p>
         </div>
 
-        {/* Community & Social Links */}
-        <div className="mt-7 pt-5 border-t border-zinc-800/80">
+        {/* Community & Contact Links (Discord, Tele, Sosmed) */}
+        <div className="mt-6 pt-5 border-t border-zinc-800/80">
           <p className="text-[11px] font-medium text-zinc-400 mb-3">
-            Komunitas & Server Resmi
+            Komunitas & Kontak Resmi
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {/* Discord Link */}
             <a
               href={DISCORD_BOT_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#5865F2]/10 hover:bg-[#5865F2]/20 border border-[#5865F2]/30 text-[#7289DA] hover:text-white transition-all text-xs font-semibold"
+              className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white/5 hover:bg-[#5865F2]/20 border border-white/10 text-zinc-300 hover:text-white transition-all text-[11px] font-semibold"
               title="Server Discord Resmi"
             >
-              <IconDiscord className="w-4 h-4" />
+              <IconDiscord className="w-3.5 h-3.5 text-[#5865F2]" />
               <span>Discord</span>
             </a>
 
@@ -110,11 +88,23 @@ export function PrivateAccessGate() {
               href={TELEGRAM_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#229ED9]/10 hover:bg-[#229ED9]/20 border border-[#229ED9]/30 text-[#229ED9] hover:text-white transition-all text-xs font-semibold"
+              className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white/5 hover:bg-[#229ED9]/20 border border-white/10 text-zinc-300 hover:text-white transition-all text-[11px] font-semibold"
               title="Channel Telegram Resmi"
             >
-              <IconTelegram className="w-4 h-4" />
+              <IconTelegram className="w-3.5 h-3.5 text-[#229ED9]" />
               <span>Telegram</span>
+            </a>
+
+            {/* Sosmed Link */}
+            <a
+              href="https://t.me/sekolahnakal"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white/5 hover:bg-pink-500/20 border border-white/10 text-zinc-300 hover:text-white transition-all text-[11px] font-semibold"
+              title="Media Sosial Resmi"
+            >
+              <span className="text-xs">🌐</span>
+              <span>Sosmed</span>
             </a>
           </div>
         </div>
