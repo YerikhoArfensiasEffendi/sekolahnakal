@@ -114,7 +114,23 @@ function getMovies($dataPath, $defaultMovies = []) {
         $content = file_get_contents($dataPath);
         $json = json_decode($content, true);
         if (is_array($json)) {
-            return $json;
+            $sanitized = [];
+            foreach ($json as $m) {
+                if (isset($m['videoUrl']) && strpos($m['videoUrl'], '/uploads/videos/') === 0) {
+                    $localFilePath = dirname(__DIR__) . $m['videoUrl'];
+                    if (!file_exists($localFilePath)) {
+                        $m['videoUrl'] = '';
+                    }
+                }
+                if (isset($m['posterUrl']) && strpos($m['posterUrl'], '/uploads/posters/') === 0) {
+                    $localFilePath = dirname(__DIR__) . $m['posterUrl'];
+                    if (!file_exists($localFilePath)) {
+                        $m['posterUrl'] = '/images/logo.png';
+                    }
+                }
+                $sanitized[] = $m;
+            }
+            return $sanitized;
         }
     }
     file_put_contents($dataPath, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

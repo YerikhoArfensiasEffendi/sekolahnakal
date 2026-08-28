@@ -129,33 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDiscordAccount(account);
     setTier(detectedTier);
 
-    // Sinkronisasi otomatis ke gateway Bot Discord resmi
-    try {
-      fetch('/api/discord.php?action=verify_member', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, roleName }),
-      })
-        .then((r) => r.json())
-        .then((res) => {
-          if (res && res.success && res.account) {
-            const updatedAccount: DiscordAccount = {
-              ...account,
-              ...res.account,
-              avatarUrl: res.account.avatarUrl || account.avatarUrl,
-            };
-            saveDiscordAccount(updatedAccount);
-            setDiscordAccount(updatedAccount);
-            if (res.tier) {
-              setTier(res.tier);
-            }
-          }
-        })
-        .catch(() => {});
-    } catch {
-      // ignore
-    }
-
     return {
       success: true,
       tier: detectedTier,

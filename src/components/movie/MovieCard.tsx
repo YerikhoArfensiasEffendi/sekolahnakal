@@ -190,33 +190,22 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
               width={400}
               height={225}
             />
-          ) : previewVideoSource ? (
-            /* Fallback Video Frame Snapshot jika gambar poster tidak tersedia */
-            <video
-              src={`${previewVideoSource}#t=1.5`}
-              preload="metadata"
-              muted
-              playsInline
-              className={cn(
-                'h-full w-full object-cover transition-all duration-300',
-                isPlayingPreview && isVideoPlaying ? 'opacity-0' : 'opacity-100'
-              )}
-            />
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex items-center justify-center p-4 text-center">
-              <span className="text-xs font-bold text-zinc-500 line-clamp-2">{movie.title}</span>
+            <div className="h-full w-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-[#0c0c0e] flex flex-col items-center justify-center p-4 text-center select-none">
+              <span className="text-xl mb-1 opacity-75">🎬</span>
+              <span className="text-xs font-bold text-zinc-400 line-clamp-2">{movie.title}</span>
             </div>
           )}
 
-          {/* Inline Auto-Playing Moving Video Preview on Hover (Muted & Loop) */}
-          {!isLocked && previewVideoSource && (
+          {/* Inline Auto-Playing Moving Video Preview on Hover ONLY (Muted & Loop) */}
+          {!isLocked && isPlayingPreview && previewVideoSource && (
             <video
               ref={videoRef}
               src={previewVideoSource}
               muted
               loop
               playsInline
-              preload="auto"
+              preload="metadata"
               onPlaying={() => setIsVideoPlaying(true)}
               onError={() => {
                 setIsVideoPlaying(false);
@@ -224,7 +213,7 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
               }}
               className={cn(
                 'absolute inset-0 h-full w-full object-cover transition-opacity duration-200 pointer-events-none',
-                isPlayingPreview && isVideoPlaying ? 'opacity-100' : 'opacity-0'
+                isVideoPlaying ? 'opacity-100' : 'opacity-0'
               )}
             />
           )}

@@ -77,11 +77,8 @@ export function triggerSecurityLockdown(reason: string = 'Mode Inspect / DevTool
   }
 }
 
-// Buka kunci lockdown (hanya jika DevTools sudah tertutup)
+// Buka kunci lockdown
 export function restoreSecuritySession(): boolean {
-  if (isDevToolsOpen()) {
-    return false; // Gagal pulihkan karena DevTools masih terbuka!
-  }
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
@@ -120,8 +117,12 @@ export function getSecurityLockReason(): string {
 export function isDevToolsOpen(): boolean {
   if (typeof window === 'undefined') return false;
 
+  // Izinkan developer / admin saat membuka console di dashboard admin
+  if (window.location.pathname.startsWith('/admin') || sessionStorage.getItem('admin_authenticated') === 'true') {
+    return false;
+  }
+
   // Skip dimensi-based detection pada perangkat sentuh (iOS/Android)
-  // karena browser bar, notch, gesture area menyebabkan false positive
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   if (isTouchDevice) return false;
 
