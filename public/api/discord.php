@@ -758,8 +758,21 @@ if ($action === 'poll_realtime' || $action === 'cron_sync') {
 
             if (empty($finalVideoUrl)) continue;
 
-            // 2. Poster
-            $posterUrl = $imageAttachment ? $imageAttachment['url'] : '/images/logo.png';
+            // 2. Poster & Preview
+            $localPoster = '/uploads/posters/poster_' . $msgId . '.jpg';
+            $localPosterPath = dirname(__DIR__) . $localPoster;
+            $localPreview = '/uploads/previews/preview_' . $msgId . '.mp4';
+            $localPreviewPath = dirname(__DIR__) . $localPreview;
+
+            if (file_exists($localPosterPath) && filesize($localPosterPath) > 500) {
+                $posterUrl = $localPoster;
+            } elseif ($imageAttachment) {
+                $posterUrl = $imageAttachment['url'];
+            } else {
+                $posterUrl = $localPoster; // Fallback to poster path for subsequent generator run
+            }
+
+            $previewUrl = (file_exists($localPreviewPath) && filesize($localPreviewPath) > 500) ? $localPreview : null;
 
             // 3. Ensure Category Exists
             ensureCategoryExists($chan['category']);
@@ -778,6 +791,7 @@ if ($action === 'poll_realtime' || $action === 'cron_sync') {
                 'posterUrl' => $posterUrl,
                 'backdropUrl' => $posterUrl,
                 'videoUrl' => $finalVideoUrl,
+                'previewUrl' => $previewUrl,
                 'discordMsgId' => $msgId,
                 'discordChannelId' => $chanId,
                 'syncedAt' => date('c')
@@ -940,7 +954,20 @@ if ($action === 'scrape_channel') {
 
         if (empty($finalVideoUrl)) continue;
 
-        $posterUrl = $imageAttachment ? $imageAttachment['url'] : '/images/logo.png';
+        $localPoster = '/uploads/posters/poster_' . $msgId . '.jpg';
+        $localPosterPath = dirname(__DIR__) . $localPoster;
+        $localPreview = '/uploads/previews/preview_' . $msgId . '.mp4';
+        $localPreviewPath = dirname(__DIR__) . $localPreview;
+
+        if (file_exists($localPosterPath) && filesize($localPosterPath) > 500) {
+            $posterUrl = $localPoster;
+        } elseif ($imageAttachment) {
+            $posterUrl = $imageAttachment['url'];
+        } else {
+            $posterUrl = $localPoster;
+        }
+
+        $previewUrl = (file_exists($localPreviewPath) && filesize($localPreviewPath) > 500) ? $localPreview : null;
         ensureCategoryExists($categoryName);
 
         $newMovie = [
@@ -956,6 +983,7 @@ if ($action === 'scrape_channel') {
             'posterUrl' => $posterUrl,
             'backdropUrl' => $posterUrl,
             'videoUrl' => $finalVideoUrl,
+            'previewUrl' => $previewUrl,
             'discordMsgId' => $msgId,
             'discordChannelId' => $channelId,
             'syncedAt' => date('c')
