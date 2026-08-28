@@ -18,8 +18,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $BOT_TOKEN = getenv('DISCORD_BOT_TOKEN') ?: '';
-$GUILD_ID = getenv('DISCORD_GUILD_ID') ?: '1542462858066010124';
-$CLIENT_ID = getenv('DISCORD_CLIENT_ID') ?: '1494541202379509780';
+$GUILD_ID = getenv('DISCORD_GUILD_ID') ?: '1402615068818145401';
+$CLIENT_ID = getenv('DISCORD_CLIENT_ID') ?: '1542726904862216363';
+$ROLE_VVIP_ID = '1402875594286432397';
+$ROLE_VIP_ID = '1402875677379657738';
 
 $configPath = __DIR__ . '/data/config.json';
 if (file_exists($configPath)) {
@@ -29,6 +31,15 @@ if (file_exists($configPath)) {
     }
     if (!empty($cfg['discord_guild_id'])) {
         $GUILD_ID = $cfg['discord_guild_id'];
+    }
+    if (!empty($cfg['discord_client_id'])) {
+        $CLIENT_ID = $cfg['discord_client_id'];
+    }
+    if (!empty($cfg['discord_role_vvip'])) {
+        $ROLE_VVIP_ID = $cfg['discord_role_vvip'];
+    }
+    if (!empty($cfg['discord_role_vip'])) {
+        $ROLE_VIP_ID = $cfg['discord_role_vip'];
     }
 }
 
@@ -143,6 +154,8 @@ if ($action === 'verify_member') {
         }
     }
 
+    $memberRoleIds = [];
+
     // Attempt searching member in Guild
     if (!empty($userId) && is_numeric($userId)) {
         $memberRes = discordApiRequest("/guilds/{$GUILD_ID}/members/{$userId}", $BOT_TOKEN);
@@ -155,6 +168,7 @@ if ($action === 'verify_member') {
             }
             if (isset($memberRes['data']['roles']) && is_array($memberRes['data']['roles'])) {
                 foreach ($memberRes['data']['roles'] as $rid) {
+                    $memberRoleIds[] = (string)$rid;
                     if (isset($rolesMap[$rid])) {
                         $rolesFound[] = $rolesMap[$rid];
                     }
@@ -173,6 +187,7 @@ if ($action === 'verify_member') {
             }
             if (isset($member['roles']) && is_array($member['roles'])) {
                 foreach ($member['roles'] as $rid) {
+                    $memberRoleIds[] = (string)$rid;
                     if (isset($rolesMap[$rid])) {
                         $rolesFound[] = $rolesMap[$rid];
                     }
@@ -195,6 +210,12 @@ if ($action === 'verify_member') {
     $hasUploadAccess = false;
     $tier = 'regular';
 
+    if (in_array((string)$ROLE_VVIP_ID, $memberRoleIds)) {
+        $tier = 'vvip';
+    } elseif (in_array((string)$ROLE_VIP_ID, $memberRoleIds)) {
+        $tier = 'vip';
+    }
+
     foreach ($rolesFound as $r) {
         $up = strtoupper($r);
         if (
@@ -204,7 +225,6 @@ if ($action === 'verify_member') {
             strpos($up, 'KREATOR') !== false ||
             strpos($up, 'CREATOR') !== false ||
             strpos($up, 'UPLOADER') !== false ||
-            strpos($up, 'TALENT') !== false ||
             strpos($up, 'STAFF') !== false
         ) {
             $hasUploadAccess = true;
@@ -214,8 +234,6 @@ if ($action === 'verify_member') {
             $tier = 'vvip';
         } elseif (strpos($up, 'VIP') !== false && $tier !== 'vvip') {
             $tier = 'vip';
-        } elseif (strpos($up, 'TALENT') !== false && $tier !== 'vvip' && $tier !== 'vip') {
-            $tier = 'talent';
         }
     }
 
@@ -265,12 +283,14 @@ if ($action === 'verify_oauth_user') {
     }
 
     $rolesFound = [];
+    $memberRoleIds = [];
 
     // Query member from Guild using Bot Token
     if (!empty($userId)) {
         $memberRes = discordApiRequest("/guilds/{$GUILD_ID}/members/{$userId}", $BOT_TOKEN);
         if ($memberRes['code'] === 200 && isset($memberRes['data']['roles'])) {
             foreach ($memberRes['data']['roles'] as $rid) {
+                $memberRoleIds[] = (string)$rid;
                 if (isset($rolesMap[$rid])) {
                     $rolesFound[] = $rolesMap[$rid];
                 }
@@ -288,6 +308,12 @@ if ($action === 'verify_oauth_user') {
     $hasUploadAccess = false;
     $tier = 'regular';
 
+    if (in_array((string)$ROLE_VVIP_ID, $memberRoleIds)) {
+        $tier = 'vvip';
+    } elseif (in_array((string)$ROLE_VIP_ID, $memberRoleIds)) {
+        $tier = 'vip';
+    }
+
     foreach ($rolesFound as $r) {
         $up = strtoupper($r);
         if (
@@ -297,7 +323,6 @@ if ($action === 'verify_oauth_user') {
             strpos($up, 'KREATOR') !== false ||
             strpos($up, 'CREATOR') !== false ||
             strpos($up, 'UPLOADER') !== false ||
-            strpos($up, 'TALENT') !== false ||
             strpos($up, 'STAFF') !== false
         ) {
             $hasUploadAccess = true;
@@ -307,8 +332,6 @@ if ($action === 'verify_oauth_user') {
             $tier = 'vvip';
         } elseif (strpos($up, 'VIP') !== false && $tier !== 'vvip') {
             $tier = 'vip';
-        } elseif (strpos($up, 'TALENT') !== false && $tier !== 'vvip' && $tier !== 'vip') {
-            $tier = 'talent';
         }
     }
 

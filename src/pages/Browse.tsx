@@ -21,7 +21,6 @@ const TIER_FILTERS = [
   { id: 'regular', label: 'REGULER', iconType: 'user', color: 'text-gray-300' },
   { id: 'vvip', label: 'EXCLUSIF VVIP', iconType: 'crown', color: 'text-amber-300' },
   { id: 'vip', label: 'EXCLUSIF VIP', iconType: 'star', color: 'text-purple-300' },
-  { id: 'talent', label: 'EXCLUSIF TALENT', iconType: 'diamond', color: 'text-cyan-300' },
 ];
 
 export default function Browse() {

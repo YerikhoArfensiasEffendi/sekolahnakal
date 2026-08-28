@@ -75,23 +75,6 @@ const TIER_GROUPS = [
     ],
   },
   {
-    id: 'talent',
-    label: 'EXCLUSIF TALENT',
-    shortLabel: 'Talent POV',
-    iconType: 'diamond',
-    color: 'text-cyan-400',
-    badgeClass: 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
-    description: 'Video sudut pandang orang pertama (POV) realistis & official talent showcase.',
-    categories: [
-      'POV & Immersive',
-      'Talent Showcase',
-      'Behind The Scenes',
-      'Indie & Amateur',
-      'Kreator Resmi',
-      'Private Session',
-    ],
-  },
-  {
     id: 'regular',
     label: 'REGULER STREAM',
     shortLabel: 'Reguler',

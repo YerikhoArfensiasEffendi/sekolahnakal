@@ -17,7 +17,7 @@ import { Section } from '@/components/ui/Section';
 import { MovieRowSkeleton, HeroSkeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { SideAdSlot } from '@/components/ads/SideAdSlot';
-import { IconCrown, IconStar, IconDiamond, IconUser } from '@/components/icons';
+import { IconCrown, IconStar, IconUser } from '@/components/icons';
 
 interface HomeData {
   featured: Movie;
@@ -28,7 +28,6 @@ interface HomeData {
   regular: Movie[];
   vvip: Movie[];
   vip: Movie[];
-  talent: Movie[];
   continueWatching: Movie[];
   progressMap: Record<string, WatchProgress>;
 }
@@ -80,7 +79,6 @@ export default function Home() {
 
       const vvip = all.filter((m) => m.tier === 'vvip');
       const vip = all.filter((m) => m.tier === 'vip');
-      const talent = all.filter((m) => m.tier === 'talent');
       const regular = all.filter((m) => !m.tier || m.tier === 'regular');
 
       setData({
@@ -92,7 +90,6 @@ export default function Home() {
         regular,
         vvip,
         vip,
-        talent,
         continueWatching: continueWatchingMovies,
         progressMap,
       });
@@ -197,35 +194,21 @@ export default function Home() {
             </Section>
           )}
 
-          {/* 4. Exclusive Talent Section */}
-          {data.talent.length > 0 && (
-            <Section
-              title={
-                <span className="flex items-center gap-2">
-                  <IconDiamond className="w-5 h-5 text-cyan-400" />
-                  <span>EXCLUSIF TALENT & CREATOR</span>
-                </span>
-              }
-            >
-              <MovieRow movies={data.talent} />
-            </Section>
-          )}
-
-          {/* 5. Trending Now */}
+          {/* 4. Trending Now */}
           {data.trending.length > 0 && (
             <Section title="Sedang Tren Sekarang">
               <MovieRow movies={data.trending} />
             </Section>
           )}
 
-          {/* 6. New Releases */}
+          {/* 5. New Releases */}
           {data.newReleases.length > 0 && (
             <Section title="Rilis Terbaru">
               <MovieRow movies={data.newReleases} />
             </Section>
           )}
 
-          {/* 7. Popular Movies */}
+          {/* 6. Popular Movies */}
           {data.popular.length > 0 && (
             <Section title="Paling Banyak Ditonton">
               <MovieRow movies={data.popular} />
@@ -236,7 +219,6 @@ export default function Home() {
           {data.regular.length === 0 &&
             data.vvip.length === 0 &&
             data.vip.length === 0 &&
-            data.talent.length === 0 &&
             data.trending.length === 0 && (
               <div className="py-20 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/80 p-8 space-y-3">
                 <div className="text-4xl">🎬</div>

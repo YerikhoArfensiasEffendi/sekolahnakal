@@ -27,7 +27,6 @@ const TIER_FILTERS = [
   { id: 'regular', label: 'REGULER', iconType: 'user' },
   { id: 'vvip', label: 'EXCLUSIF VVIP', iconType: 'crown' },
   { id: 'vip', label: 'EXCLUSIF VIP', iconType: 'star' },
-  { id: 'talent', label: 'EXCLUSIF TALENT', iconType: 'diamond' },
 ];
 
 const DURATION_FILTERS = [
