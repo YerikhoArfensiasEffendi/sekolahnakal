@@ -624,9 +624,13 @@ export default function AdminUpload() {
           storageProvider
         );
 
-        if (uploadRes.success && uploadRes.url) {
-          serverVideoUrl = uploadRes.url;
+        if (!uploadRes.success || !uploadRes.url) {
+          console.error('Gagal upload video ke storage:', item.title, uploadRes.error);
+          error(`Gagal upload "${item.title}": ${uploadRes.error || 'Koneksi cloud storage terputus'}`);
+          continue;
         }
+
+        serverVideoUrl = uploadRes.url;
 
         const cleanItemGenres = item.genres.filter((g) => categories.some((c) => c.name.toLowerCase() === g.toLowerCase()));
         const created = movieStore.add({
@@ -653,7 +657,11 @@ export default function AdminUpload() {
     setIsUploadingModalOpen(false);
     setIsBulkProcessing(false);
     setBulkQueue([]);
-    success(`🎉 Sukses mempublikasikan ${publishedCount} video ke katalog streaming!`);
+    if (publishedCount > 0) {
+      success(`🎉 Sukses mempublikasikan ${publishedCount} video ke katalog streaming!`);
+    } else {
+      error('Tidak ada video yang berhasil diunggah ke storage. Silakan periksa API Key dan koneksi internet Anda.');
+    }
     refreshData();
     changeTab('content');
   };
@@ -730,6 +738,28 @@ export default function AdminUpload() {
     changeTab('upload');
   };
 
+  const handlePurgeBrokenVideos = () => {
+    if (!window.confirm('Hapus semua data video yang link streaming-nya kosong atau rusak?')) return;
+    const all = movieStore.getAll();
+    const valid = all.filter((m) => {
+      const url = movieStore.getVideoUrl(m.id) || m.videoUrl;
+      return url && url.trim() !== '' && !url.includes('/uploads/videos/');
+    });
+    const removedCount = all.length - valid.length;
+    localStorage.setItem('sekolah_nakal_movies_db', JSON.stringify(valid));
+    fetch('/api/movies.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(valid),
+    }).catch(() => {});
+    refreshData();
+    if (removedCount > 0) {
+      success(`🧹 Berhasil membersihkan ${removedCount} video kosong/rusak dari database.`);
+    } else {
+      info('Semua data video sudah bersih dan memiliki link streaming yang valid.');
+    }
+  };
+
   const handleSaveSingleVideo = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -743,6 +773,16 @@ export default function AdminUpload() {
     const currentYear = new Date().getFullYear();
 
     let finalVideoUrl = uploadMode === 'url' ? videoUrl.trim() : undefined;
+
+    if (!editingId && uploadMode === 'file' && !selectedFile) {
+      error('Silakan pilih file video MP4/MKV yang ingin diunggah!');
+      return;
+    }
+
+    if (!editingId && uploadMode === 'url' && !videoUrl.trim()) {
+      error('Silakan masukkan link video streaming (ZeroStorage / LuluStream / MP4 / HLS)!');
+      return;
+    }
 
     if (uploadMode === 'file' && selectedFile) {
       setIsUploadingModalOpen(true);
@@ -1560,7 +1600,6 @@ export default function AdminUpload() {
                   <option value="regular">Reguler (Gratis)</option>
                   <option value="vip">VIP</option>
                   <option value="vvip">VVIP Uncensored</option>
-                  <option value="talent">Talent</option>
                 </select>
 
                 <select
@@ -1575,6 +1614,16 @@ export default function AdminUpload() {
                     </option>
                   ))}
                 </select>
+
+                <button
+                  type="button"
+                  onClick={handlePurgeBrokenVideos}
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  title="Hapus video yang link-nya kosong atau rusak dari database"
+                >
+                  <span>🧹</span>
+                  <span className="hidden sm:inline">Bersihkan Video Kosong</span>
+                </button>
               </div>
             </div>
 

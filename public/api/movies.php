@@ -175,10 +175,15 @@ if ($method === 'POST') {
 
     $movies = getMovies($dataPath, $defaultMovies);
 
-    // If bulk replace or import
+    // If direct array of movies or bulk replace
     if (isset($data['bulk']) && is_array($data['bulk'])) {
         saveMoviesList($dataPath, $data['bulk']);
         echo json_encode(['success' => true, 'count' => count($data['bulk'])]);
+        exit;
+    }
+    if (is_array($data) && (empty($data) || isset($data[0]))) {
+        saveMoviesList($dataPath, $data);
+        echo json_encode(['success' => true, 'count' => count($data)]);
         exit;
     }
 

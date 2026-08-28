@@ -212,8 +212,13 @@ export const movieStore = {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const data = JSON.parse(xhr.responseText);
-            if (data.success && (data.embedUrl || data.fileId)) {
-              const embedUrl = data.embedUrl || `https://zerostorage.net/embed/${data.fileId}`;
+            if (data.success && (data.embedUrl || data.fileId || data.viewUrl)) {
+              let embedUrl = data.embedUrl;
+              if (!embedUrl && data.fileId) {
+                embedUrl = `https://zerostorage.net/embed/${data.fileId}`;
+              } else if (!embedUrl && data.viewUrl) {
+                embedUrl = data.viewUrl.replace('/watch/', '/embed/');
+              }
               resolve({ success: true, url: embedUrl, fileId: data.fileId });
               return;
             }
@@ -221,11 +226,14 @@ export const movieStore = {
               resolve({ success: false, error: data.error });
               return;
             }
-          } catch {}
+          } catch {
+            resolve({ success: false, error: 'Gagal membaca format respons dari ZeroStorage.' });
+            return;
+          }
         }
         resolve({
           success: false,
-          error: `Gagal direct upload ZeroStorage (HTTP ${xhr.status}).`,
+          error: `Gagal direct upload ZeroStorage (HTTP ${xhr.status}). Pastikan API Key valid dan file tidak corrupt.`,
         });
       };
 
