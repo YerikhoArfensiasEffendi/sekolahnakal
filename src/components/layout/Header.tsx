@@ -13,13 +13,12 @@ import { movieStore } from '@/services/movieStore.service';
 
 const NAV_LINKS = [
   { label: 'Beranda', to: ROUTES.HOME },
-  { label: 'Private Server', to: ROUTES.PRIVATE_SERVER },
+  { label: 'Private Server', to: ROUTES.PRIVATE_SERVER, badge: 'VIP' },
 ];
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isContactOpen, setIsContactOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,7 +29,6 @@ export function Header() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 1023px)');
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const contactDropdownRef = useRef<HTMLDivElement | null>(null);
   const searchContainerRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement | null>(null);
@@ -61,9 +59,6 @@ export function Header() {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsUserMenuOpen(false);
-      }
-      if (contactDropdownRef.current && !contactDropdownRef.current.contains(e.target as Node)) {
-        setIsContactOpen(false);
       }
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setIsSearchFocused(false);
@@ -175,6 +170,11 @@ export function Header() {
                   }
                 >
                   <span>{link.label}</span>
+                  {link.badge && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
+                      {link.badge}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -284,63 +284,29 @@ export function Header() {
             </svg>
           </button>
 
-          {/* Dropdown Menu Kontak: Discord, Telegram, Sosmed */}
-          <div ref={contactDropdownRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setIsContactOpen(!isContactOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-text-secondary hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors cursor-pointer"
-              aria-label="Kontak Resmi"
-            >
-              <span>Kontak</span>
-              <span className="text-[8px] opacity-70">▼</span>
-            </button>
+          {/* Discord Server Link */}
+          <a
+            href={DISCORD_BOT_INVITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:text-[#5865F2] hover:bg-[#5865F2]/10 transition-colors"
+            aria-label="Server Discord Resmi"
+            title="Gabung Server Discord"
+          >
+            <IconDiscord className="w-4 h-4" />
+          </a>
 
-            <AnimatePresence>
-              {isContactOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-[#121212]/95 backdrop-blur-xl border border-zinc-800 p-1.5 shadow-2xl z-50 space-y-1"
-                >
-                  <a
-                    href={DISCORD_BOT_INVITE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setIsContactOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-[#5865F2]/20 transition-colors"
-                  >
-                    <IconDiscord className="w-4 h-4 text-[#5865F2]" />
-                    <span>Discord</span>
-                  </a>
-
-                  <a
-                    href={TELEGRAM_INVITE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setIsContactOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-[#229ED9]/20 transition-colors"
-                  >
-                    <IconTelegram className="w-4 h-4 text-[#229ED9]" />
-                    <span>Telegram</span>
-                  </a>
-
-                  <a
-                    href="https://t.me/sekolahnakal"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setIsContactOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white hover:bg-pink-500/20 transition-colors"
-                  >
-                    <span className="text-sm">🌐</span>
-                    <span>Sosmed</span>
-                  </a>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Telegram Channel Link */}
+          <a
+            href={TELEGRAM_INVITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:text-[#229ED9] hover:bg-[#229ED9]/10 transition-colors"
+            aria-label="Channel Telegram Resmi"
+            title="Gabung Channel Telegram"
+          >
+            <IconTelegram className="w-4 h-4" />
+          </a>
 
           {isAuthenticated ? (
             <div className="flex items-center gap-2 sm:gap-3">
@@ -514,6 +480,11 @@ export function Header() {
                 }
               >
                 <span>{link.label}</span>
+                {link.badge && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
+                    {link.badge}
+                  </span>
+                )}
               </NavLink>
             ))}
             {isAuthenticated && (
