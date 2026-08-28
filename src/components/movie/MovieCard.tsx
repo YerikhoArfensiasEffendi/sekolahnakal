@@ -25,6 +25,7 @@ import {
   IconLock,
   IconPlay,
 } from '@/components/icons';
+import { DynamicThumbnail } from './DynamicThumbnail';
 
 const SAMPLE_PREVIEW_VIDEOS = [
   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
@@ -48,7 +49,6 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [actualVideoUrl, setActualVideoUrl] = useState<string>('');
-  const [imgError, setImgError] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hoverTimeoutRef = useRef<number | null>(null);
@@ -130,9 +130,6 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
     }
   };
 
-  const posterSource = movie.backdropUrl || movie.posterUrl;
-  const isPosterEmptyOrBlack = !posterSource || posterSource === '/images/logo.png' || imgError;
-
   const [likesState, setLikesState] = useState(() => Number(localStorage.getItem(`sn_likes_${movie.id}`)) || 0);
   const [dislikesState, setDislikesState] = useState(() => Number(localStorage.getItem(`sn_dislikes_${movie.id}`)) || 0);
 
@@ -153,7 +150,6 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
     if (totalVotes > 0) {
       return ((likesState / totalVotes) * 10).toFixed(1);
     }
-    // Jika belum ada voting sama sekali, jangan tampilkan bintang rating palsu
     return null;
   }, [totalVotes, likesState]);
 
@@ -173,29 +169,10 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
       >
         {/* 16:9 Video Thumbnail Frame with Inline Video Motion Preview */}
         <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-zinc-950 border border-border/50 transition-all duration-200 group-hover:scale-[1.02] shadow-md group-hover:shadow-2xl">
-          {/* Static Backdrop Poster - Tetap muncul sampai frame video benar-benar play */}
-          {!isPosterEmptyOrBlack ? (
-            <img
-              src={posterSource}
-              alt={movie.title}
-              loading="lazy"
-              onError={() => setImgError(true)}
-              className={cn(
-                'h-full w-full object-cover transition-all duration-300',
-                isLocked
-                  ? 'filter blur-md md:blur-lg brightness-40 contrast-125 select-none pointer-events-none'
-                  : 'group-hover:scale-100',
-                isPlayingPreview && isVideoPlaying ? 'opacity-0' : 'opacity-100'
-              )}
-              width={400}
-              height={225}
-            />
-          ) : (
-            <div className="h-full w-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-[#0c0c0e] flex flex-col items-center justify-center p-4 text-center select-none">
-              <span className="text-xl mb-1 opacity-75">🎬</span>
-              <span className="text-xs font-bold text-zinc-400 line-clamp-2">{movie.title}</span>
-            </div>
-          )}
+          {/* Dynamic High-Impact Cinematic Thumbnail Artwork */}
+          <div className={cn('h-full w-full', isPlayingPreview && isVideoPlaying ? 'opacity-0' : 'opacity-100')}>
+            <DynamicThumbnail movie={movie} isLocked={isLocked} />
+          </div>
 
           {/* Inline Auto-Playing Moving Video Preview on Hover ONLY (Muted & Loop) */}
           {!isLocked && isPlayingPreview && previewVideoSource && (

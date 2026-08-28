@@ -50,12 +50,25 @@ export function MovieHero({ movies, movie }: MovieHeroProps) {
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="absolute inset-0 h-full w-full"
         >
-          <img
-            src={currentMovie.backdropUrl}
-            alt={currentMovie.title}
-            className="h-full w-full object-cover"
-            fetchPriority="high"
-          />
+          {currentMovie.backdropUrl &&
+          currentMovie.backdropUrl !== '/images/logo.png' &&
+          !currentMovie.backdropUrl.includes('logo.png') ? (
+            <img
+              src={currentMovie.backdropUrl}
+              alt={currentMovie.title}
+              className="h-full w-full object-cover"
+              fetchPriority="high"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-br from-red-950/80 via-zinc-950 to-[#0a0a0d] relative flex items-center justify-center">
+              <div className="absolute -top-20 left-1/4 w-96 h-96 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-20 right-1/4 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:16px_16px] opacity-70" />
+              <div className="text-[72px] sm:text-[110px] font-black tracking-tighter text-white/[0.03] uppercase select-none pointer-events-none">
+                SEKOLAH NAKAL
+              </div>
+            </div>
+          )}
         </motion.div>
       </AnimatePresence>
 
