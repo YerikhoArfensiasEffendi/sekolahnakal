@@ -15,7 +15,8 @@ import { useNotification } from '@/contexts/NotificationContext';
 import { watchPath } from '@/constants/routes';
 import { formatDuration } from '@/utils/format';
 import { getTierBadgeConfig } from '@/utils/tier';
-import { IconCrown, IconStar, IconDiamond, IconCheck } from '@/components/icons';
+import { IconCrown, IconStar, IconDiamond, IconCheck, IconLock } from '@/components/icons';
+import { DynamicThumbnail } from '@/components/movie/DynamicThumbnail';
 
 export default function Watch() {
   const { id } = useParams<{ id: string }>();
@@ -254,7 +255,7 @@ export default function Watch() {
   }
 
   const inWatchlist = movieInfo ? isInWatchlist(movieInfo.id) : false;
-  const isLockedByTier = movieInfo?.tier && !hasAccessToTier(movieInfo.tier);
+  const isLockedByTier = Boolean(movieInfo?.tier && movieInfo.tier !== 'regular' && !hasAccessToTier(movieInfo.tier));
   const tierConfig = movieInfo?.tier ? getTierBadgeConfig(movieInfo.tier) : null;
 
   return (
@@ -422,26 +423,34 @@ export default function Watch() {
               <div className="space-y-3">
                 {(relatedVideos || []).map((video) => {
                   const vidTierConfig = video.tier ? getTierBadgeConfig(video.tier) : null;
+                  const isVideoLocked = Boolean(video.tier && video.tier !== 'regular' && !hasAccessToTier(video.tier));
                   return (
                     <Link
                       key={video.id}
                       to={watchPath(video.id)}
-                      className="group flex gap-3 p-1.5 rounded-xl hover:bg-bg-hover/60 transition-colors border-b border-border/20 last:border-b-0 pb-3"
+                      className="group flex gap-3 p-1.5 rounded-xl hover:bg-bg-hover/60 transition-colors border-b border-border/20 last:border-b-0 pb-3 cursor-pointer"
                     >
-                      {/* 16:9 Thumbnail */}
+                      {/* 16:9 Thumbnail with Dynamic Thumbnail & Blur Lock Overlay */}
                       <div className="relative aspect-video w-36 sm:w-40 shrink-0 overflow-hidden rounded-lg bg-bg-surface border border-border/40">
-                        <img
-                          src={video.backdropUrl || video.posterUrl}
-                          alt={video.title}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          loading="lazy"
-                        />
-                        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white">
+                        <DynamicThumbnail movie={video} isLocked={isVideoLocked} />
+
+                        {isVideoLocked && (
+                          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center p-1 text-center select-none z-10">
+                            <div className="flex h-6 w-6 items-center justify-center rounded bg-black/90 border border-white/20 text-amber-400 shadow mb-0.5">
+                              <IconLock className="w-3 h-3" />
+                            </div>
+                            <span className="text-[8px] font-black uppercase text-white tracking-wider">
+                              Terkunci
+                            </span>
+                          </div>
+                        )}
+
+                        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white z-20">
                           {formatDuration(video.duration)}
                         </span>
                         {vidTierConfig && vidTierConfig.label !== 'REGULAR' && (
                           <span
-                            className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase shadow ${vidTierConfig.badgeClass}`}
+                            className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-black uppercase shadow z-20 ${vidTierConfig.badgeClass}`}
                           >
                             {vidTierConfig.shortLabel}
                           </span>
