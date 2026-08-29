@@ -17,6 +17,7 @@ import re
 import sys
 import json
 import time
+import random
 import base64
 import urllib.request
 import urllib.error
@@ -33,20 +34,32 @@ ZEROSTORAGE_KEY = os.getenv("ZEROSTORAGE_API_KEY", "sk_WLh9zdZcVOf3GA7L_MFbS_IPM
 LIVE_API_BASE = os.getenv("LIVE_API_BASE", "https://sekolahnakal.so791.com/api")
 
 TARGET_CHANNELS = [
+    # Reguler Channels
     {"id": "1481796670252388362", "name": "⌜🔞⌟⇾media-forward", "category": "Media Forward", "tier": "regular"},
     {"id": "1402628509112864769", "name": "⌜🔞⌟⇾media-barat", "category": "Media Barat", "tier": "regular"},
     {"id": "1402628474157400074", "name": "⌜🔞⌟⇾media-asia", "category": "Media Asia", "tier": "regular"},
     {"id": "1402627069392715876", "name": "⌜🔞⌟⇾media-lokal", "category": "Media Lokal", "tier": "regular"},
-    {"id": "1403283149508710410", "name": "⌜💎⌟⇾media-lokal", "category": "Media Lokal", "tier": "vip"},
-    {"id": "1403698007261712455", "name": "⌜💎⌟⇾media-asia", "category": "Media Asia", "tier": "vip"},
-    {"id": "1434557709859950663", "name": "⌜💎⌟⇾media-arab", "category": "Media Arab", "tier": "vip"},
+    {"id": "1518603870970843269", "name": "⌜👙⌟⇾share-kolpri", "category": "Koleksi Pribadi", "tier": "regular"},
+    {"id": "1403468388659101776", "name": "⌜🍑⌟⇾media-sfw", "category": "Media SFW", "tier": "regular"},
+
+    # VIP Asia & East
     {"id": "1408159322780733491", "name": "⌜💎⌟⇾media-china", "category": "Media China", "tier": "vip"},
     {"id": "1433196972252336169", "name": "⌜💎⌟⇾media-korea", "category": "Media Korea", "tier": "vip"},
     {"id": "1403698066317639741", "name": "⌜💎⌟⇾media-jepang", "category": "Media Jepang", "tier": "vip"},
     {"id": "1433197442656112681", "name": "⌜💎⌟⇾media-taiwan", "category": "Media Taiwan", "tier": "vip"},
+
+    # VIP Lokal & Talent
+    {"id": "1403283149508710410", "name": "⌜💎⌟⇾media-lokal", "category": "Media Lokal", "tier": "vip"},
+    {"id": "1403698007261712455", "name": "⌜💎⌟⇾media-asia", "category": "Media Asia", "tier": "vip"},
+    {"id": "1477917417010102322", "name": "⌜🔖⌟⇾save-telent", "category": "Talent Verified Collab", "tier": "talent"},
+    {"id": "1473949617841504390", "name": "⌜💎⌟⇾preview-telent", "category": "Talent Verified Collab", "tier": "talent"},
+
+    # VIP Global & Barat
+    {"id": "1403698038329053296", "name": "⌜💎⌟⇾media-barat", "category": "Media Barat", "tier": "vip"},
+    {"id": "1434557709859950663", "name": "⌜💎⌟⇾media-arab", "category": "Media Arab", "tier": "vip"},
     {"id": "1434557739694035034", "name": "⌜💎⌟⇾media-india", "category": "Media India", "tier": "vip"},
     {"id": "1433027001320476712", "name": "⌜💎⌟⇾media-latin", "category": "Media Latin", "tier": "vip"},
-    {"id": "1403698038329053296", "name": "⌜💎⌟⇾media-barat", "category": "Media Barat", "tier": "vip"},
+    {"id": "1453446102492647495", "name": "⌜😈⌟⇾content-farming", "category": "Media Eksklusif", "tier": "vip"},
 ]
 
 CHANNEL_GROUPS = {
@@ -55,6 +68,8 @@ CHANNEL_GROUPS = {
         "1402628509112864769", # Media Barat Reguler
         "1402628474157400074", # Media Asia Reguler
         "1402627069392715876", # Media Lokal Reguler
+        "1518603870970843269", # Share Kolpri
+        "1403468388659101776", # Media SFW
     ],
     "vip-asia-east": [
         "1408159322780733491", # VIP Media China
@@ -65,12 +80,15 @@ CHANNEL_GROUPS = {
     "vip-lokal-asia": [
         "1403283149508710410", # VIP Media Lokal
         "1403698007261712455", # VIP Media Asia
+        "1477917417010102322", # Save Telent
+        "1473949617841504390", # Preview Telent
     ],
     "vip-global": [
         "1403698038329053296", # VIP Media Barat
         "1434557709859950663", # VIP Media Arab
         "1434557739694035034", # VIP Media India
         "1433027001320476712", # VIP Media Latin
+        "1453446102492647495", # Content Farming
     ],
 }
 
@@ -151,16 +169,16 @@ def sync_payments():
     except Exception as e:
         log(f"Payment sync warning: {e}")
 
-def fetch_unuploaded_channel_videos(chan_id, existing_msg_ids, max_videos=30, max_pages=20):
+def fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, max_videos=50, max_pages=20):
     """
     Menjelajahi arsip riwayat channel Discord (pagination 'before=id') sampai terkumpul
-    sejumlah video baru yang belum pernah diunggah ke database.
+    daftar video item (termasuk multi-attachment dalam 1 pesan & embed) yang belum diunggah.
     """
-    unuploaded = []
+    unuploaded_items = []
     last_id = None
     pages = 0
 
-    while len(unuploaded) < max_videos and pages < max_pages:
+    while len(unuploaded_items) < max_videos and pages < max_pages:
         pages += 1
         endpoint = f"/channels/{chan_id}/messages?limit=100"
         if last_id:
@@ -174,24 +192,43 @@ def fetch_unuploaded_channel_videos(chan_id, existing_msg_ids, max_videos=30, ma
 
         for m in msgs:
             msg_id = m.get("id")
-            if msg_id in existing_msg_ids:
-                continue
-
+            content = (m.get("content") or "").strip()
             attachments = m.get("attachments", [])
+            embeds = m.get("embeds", [])
+
+            # 1. Check all attachments
+            vid_attachments = []
             for att in attachments:
                 ctype = (att.get("content_type") or "").lower()
                 fname = (att.get("filename") or "").lower()
-                if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v")):
-                    unuploaded.append(m)
+                if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v", ".avi")):
+                    vid_attachments.append(att)
+
+            for att_idx, att in enumerate(vid_attachments):
+                unique_key = f"{msg_id}-{att.get('id', att_idx)}" if len(vid_attachments) > 1 else str(msg_id)
+                if unique_key in existing_msg_ids:
+                    continue
+
+                unuploaded_items.append({
+                    "msg_id": msg_id,
+                    "unique_key": unique_key,
+                    "content": content,
+                    "url": att["url"],
+                    "filename": att.get("filename", ""),
+                    "size": att.get("size", 0),
+                    "part_index": att_idx + 1 if len(vid_attachments) > 1 else None,
+                    "total_parts": len(vid_attachments) if len(vid_attachments) > 1 else None
+                })
+                if len(unuploaded_items) >= max_videos:
                     break
 
-            if len(unuploaded) >= max_videos:
+            if len(unuploaded_items) >= max_videos:
                 break
 
         if len(msgs) < 100:
             break
 
-    return unuploaded
+    return unuploaded_items
 
 def main(target_group="all", target_category=None, limit=30):
     log("==========================================================")
@@ -229,27 +266,21 @@ def main(target_group="all", target_category=None, limit=30):
             log(f"\n[{idx}/{len(selected_channels)}] Memindai Arsip Channel: {chan_name} (Cat: {category}, Tier: {tier.upper()})")
 
             # Ambil video baru dengan penjelajahan pagination riwayat channel
-            unuploaded_msgs = fetch_unuploaded_channel_videos(chan_id, existing_msg_ids, max_videos=limit)
-            log(f"  -> Ditemukan {len(unuploaded_msgs)} video baru yang siap diproses & diunggah.")
+            unuploaded_items = fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, max_videos=limit)
+            log(f"  -> Ditemukan {len(unuploaded_items)} video item baru yang siap diproses & diunggah.")
 
             # Urutkan dari yang lebih lama ke yang terbaru
-            unuploaded_msgs.reverse()
+            unuploaded_items.reverse()
 
-            for msg in unuploaded_msgs:
-                msg_id = msg.get("id")
-                attachments = msg.get("attachments", [])
-                content = (msg.get("content") or "").strip()
-
-                video_att = None
-                for att in attachments:
-                    ctype = (att.get("content_type") or "").lower()
-                    fname = (att.get("filename") or "").lower()
-                    if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v")):
-                        video_att = att
-                        break
-
-                if not video_att:
-                    continue
+            for item in unuploaded_items:
+                msg_id = item["msg_id"]
+                unique_key = item["unique_key"]
+                content = item["content"]
+                video_url = item["url"]
+                fname = item["filename"]
+                size_bytes = item["size"]
+                part_idx = item["part_index"]
+                total_parts = item["total_parts"]
 
                 # Parse clean title
                 title = ""
@@ -257,23 +288,25 @@ def main(target_group="all", target_category=None, limit=30):
                     first_line = content.split("\n")[0].strip()
                     title = re.sub(r'https?://\S+', '', first_line).strip()
                 if not title:
-                    raw_name = video_att.get("filename", f"Video {msg_id}")
+                    raw_name = fname or f"Video {msg_id}"
                     base_name = os.path.splitext(raw_name)[0]
                     title = re.sub(r'[_.-]+', ' ', base_name).strip().title()
 
-                size_mb = round((video_att.get("size", 0)) / 1048576, 2)
-                log(f"  🎬 Memproses Video: \"{title}\" (Msg ID: {msg_id}, Size: {size_mb} MB)...")
+                if part_idx and total_parts:
+                    title = f"{title} (Part {part_idx}/{total_parts})"
+
+                size_mb = round(size_bytes / 1048576, 2) if size_bytes else 0
+                log(f"  🎬 Memproses Video: \"{title}\" (ID: {unique_key}, Size: {size_mb} MB)...")
 
                 # Download video
-                video_url = video_att["url"]
-                tmp_vid_path = os.path.join(temp_dir, f"vid_{msg_id}.mp4")
+                tmp_vid_path = os.path.join(temp_dir, f"vid_{unique_key.replace('-', '_')}.mp4")
 
                 try:
                     req_dl = urllib.request.Request(video_url, headers={"User-Agent": "Mozilla/5.0"})
                     with urllib.request.urlopen(req_dl, timeout=180) as resp, open(tmp_vid_path, "wb") as f_out:
                         shutil.copyfileobj(resp, f_out)
                 except Exception as e:
-                    log(f"    ❌ Gagal mengunduh attachment: {e}")
+                    log(f"    ❌ Gagal mengunduh video: {e}")
                     if os.path.exists(tmp_vid_path):
                         os.remove(tmp_vid_path)
                     continue
@@ -286,7 +319,7 @@ def main(target_group="all", target_category=None, limit=30):
 
                 # 1. Extract snapshot thumbnail with FFmpeg
                 poster_data_url = "/images/logo_v2.png"
-                tmp_thumb = os.path.join(temp_dir, f"thumb_{msg_id}.jpg")
+                tmp_thumb = os.path.join(temp_dir, f"thumb_{unique_key.replace('-', '_')}.jpg")
                 try:
                     cmd_ff = [
                         "ffmpeg", "-y", "-ss", "00:00:02", "-i", tmp_vid_path,
@@ -321,7 +354,7 @@ def main(target_group="all", target_category=None, limit=30):
                     pass
 
                 # 3. Optimasi Web Streaming (+faststart moov atom ke awal file)
-                tmp_fast_path = os.path.join(temp_dir, f"fast_{msg_id}.mp4")
+                tmp_fast_path = os.path.join(temp_dir, f"fast_{unique_key.replace('-', '_')}.mp4")
                 try:
                     cmd_fast = [
                         "ffmpeg", "-y", "-i", tmp_vid_path,
@@ -348,34 +381,35 @@ def main(target_group="all", target_category=None, limit=30):
                 stream_url = up_res["streamUrl"]
                 log(f"    ✅ Upload Sukses: {stream_url}")
 
-                # 4. Save movie payload
-                movie_obj = {
-                    "id": str(int(time.time())) + str(int(msg_id) % 1000).zfill(3),
+                # 5. Push payload to live server
+                movie_id = f"zs_{int(time.time())}_{random.randint(100, 999)}"
+                movie_payload = {
+                    "id": movie_id,
                     "title": title,
-                    "slug": re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-') + f"-{msg_id[-4:]}",
-                    "genres": [category],
+                    "description": content if content and not content.startswith("http") else f"Video arsip {category} - Komunitas Discord Sekolah Nakal.",
+                    "poster": poster_data_url,
+                    "banner": poster_data_url,
+                    "category": category,
                     "tier": tier,
                     "duration": duration_sec,
-                    "year": int(time.strftime("%Y")),
-                    "rating": 9.0,
-                    "overview": content if content else f"Konten eksklusif {category} Sekolah Nakal dipublikasikan melalui Discord Bot.",
-                    "posterUrl": poster_data_url,
-                    "backdropUrl": poster_data_url,
+                    "rating": round(random.uniform(8.5, 9.9), 1),
+                    "year": time.strftime("%Y"),
+                    "tags": [category, tier.upper(), "Discord Archive", "ZeroStorage CDN", "FastStart"],
                     "videoUrl": stream_url,
-                    "discordMsgId": msg_id,
-                    "discordChannelId": chan_id,
-                    "syncedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                    "streamProvider": "zerostorage",
+                    "discordMsgId": unique_key,
+                    "createdAt": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "views": random.randint(120, 850)
                 }
 
-                # 5. Push to Server
-                pushed = push_movie_to_server(movie_obj)
-                if pushed:
+                if push_movie_to_server(movie_payload):
+                    existing_msg_ids.add(unique_key)
                     total_published += 1
-                    existing_msg_ids.add(msg_id)
                     log(f"    🎉 BERHASIL DIPUBLIKASIKAN ke Server: [{category}] {title} ({tier.upper()})")
                 else:
-                    log(f"    ⚠️ Gagal menyimpan ke endpoint movies.php.")
+                    log(f"    ❌ Gagal mendaftarkan video ke server database.")
 
+                # Cleanup temp files
                 if os.path.exists(tmp_vid_path):
                     os.remove(tmp_vid_path)
                 if os.path.exists(tmp_thumb):
