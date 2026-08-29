@@ -115,23 +115,30 @@ function deduplicateMovies($movies) {
     $seenIds = [];
     $seenUrls = [];
     $seenMsgs = [];
+    $seenTitles = [];
     $unique = [];
 
     foreach ($movies as $m) {
         if (!is_array($m)) continue;
         $id = $m['id'] ?? '';
-        $vid = $m['videoUrl'] ?? '';
-        $msg = $m['discordMsgId'] ?? '';
+        $vid = strtolower(trim($m['videoUrl'] ?? ''));
+        $msg = trim($m['discordMsgId'] ?? '');
+        $rawTitle = trim($m['title'] ?? '');
+        $cleanTitle = strtolower(preg_replace('/[^a-zA-Z0-9]+/', '', $rawTitle));
 
         $isDup = false;
         if (!empty($id) && isset($seenIds[$id])) $isDup = true;
         if (!empty($vid) && isset($seenUrls[$vid])) $isDup = true;
         if (!empty($msg) && isset($seenMsgs[$msg])) $isDup = true;
+        if (strlen($cleanTitle) > 6 && !in_array($cleanTitle, ['videomp4', 'screenrecording', 'video']) && isset($seenTitles[$cleanTitle])) {
+            $isDup = true;
+        }
 
         if (!$isDup) {
             if (!empty($id)) $seenIds[$id] = true;
             if (!empty($vid)) $seenUrls[$vid] = true;
             if (!empty($msg)) $seenMsgs[$msg] = true;
+            if (strlen($cleanTitle) > 6) $seenTitles[$cleanTitle] = true;
             $unique[] = $m;
         }
     }

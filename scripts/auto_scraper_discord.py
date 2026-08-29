@@ -167,7 +167,7 @@ def sync_payments():
     except Exception as e:
         log(f"Payment sync warning: {e}")
 
-def fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, max_videos=50, max_pages=20):
+def fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, existing_titles, max_videos=50, max_pages=20):
     """
     Menjelajahi arsip riwayat channel Discord (pagination 'before=id') sampai terkumpul
     daftar video item (termasuk multi-attachment dalam 1 pesan & embed) yang belum diunggah.
@@ -192,7 +192,6 @@ def fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, max_videos=5
             msg_id = m.get("id")
             content = (m.get("content") or "").strip()
             attachments = m.get("attachments", [])
-            embeds = m.get("embeds", [])
 
             # 1. Check all attachments
             vid_attachments = []
@@ -205,6 +204,11 @@ def fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, max_videos=5
             for att_idx, att in enumerate(vid_attachments):
                 unique_key = f"{msg_id}-{att.get('id', att_idx)}" if len(vid_attachments) > 1 else str(msg_id)
                 if unique_key in existing_msg_ids:
+                    continue
+
+                raw_fname = att.get("filename", "")
+                clean_fname = re.sub(r'[^a-zA-Z0-9]+', '', os.path.splitext(raw_fname)[0].lower())
+                if clean_fname and len(clean_fname) > 6 and clean_fname in existing_titles and not clean_fname.startswith("video"):
                     continue
 
                 unuploaded_items.append({
@@ -238,7 +242,9 @@ def main(target_group="all", target_category=None, limit=30):
 
     existing_movies = get_existing_live_movies()
     existing_msg_ids = {m.get("discordMsgId") for m in existing_movies if m.get("discordMsgId")}
-    log(f"Total video terdaftar di database saat ini: {len(existing_movies)}")
+    existing_urls = {m.get("videoUrl") for m in existing_movies if m.get("videoUrl")}
+    existing_titles = {re.sub(r'[^a-zA-Z0-9]+', '', (m.get("title") or "").lower()) for m in existing_movies if len(m.get("title") or "") > 6}
+    log(f"Total video unik di database saat ini: {len(existing_movies)}")
 
     # Filter target channels based on group/category
     selected_channels = []
@@ -264,7 +270,7 @@ def main(target_group="all", target_category=None, limit=30):
             log(f"\n[{idx}/{len(selected_channels)}] Memindai Arsip Channel: {chan_name} (Cat: {category}, Tier: {tier.upper()})")
 
             # Ambil video baru dengan penjelajahan pagination riwayat channel
-            unuploaded_items = fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, max_videos=limit)
+            unuploaded_items = fetch_unuploaded_channel_video_items(chan_id, existing_msg_ids, existing_titles, max_videos=limit)
             log(f"  -> Ditemukan {len(unuploaded_items)} video item baru yang siap diproses & diunggah.")
 
             # Urutkan dari yang lebih lama ke yang terbaru
