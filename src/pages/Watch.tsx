@@ -45,6 +45,7 @@ export default function Watch() {
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
   const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [visibleRelatedCount, setVisibleRelatedCount] = useState(10);
 
   // Rating dihitung murni dari rasio Like dan Dislike (Skala 0.0 - 10.0)
   const totalVotes = likesCount + dislikesCount;
@@ -411,7 +412,9 @@ export default function Watch() {
           <div className="space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-border/30">
               <h2 className="text-base font-bold text-white tracking-tight">Video Terkait</h2>
-              <span className="text-xs text-text-muted">{(relatedVideos || []).length} Video</span>
+              <span className="text-xs text-text-muted">
+                {Math.min(visibleRelatedCount, (relatedVideos || []).length)} dari {(relatedVideos || []).length} Video
+              </span>
             </div>
 
             {(relatedVideos || []).length === 0 ? (
@@ -421,7 +424,7 @@ export default function Watch() {
               </div>
             ) : (
               <div className="space-y-3">
-                {(relatedVideos || []).map((video) => {
+                {(relatedVideos || []).slice(0, visibleRelatedCount).map((video) => {
                   const vidTierConfig = video.tier ? getTierBadgeConfig(video.tier) : null;
                   const isVideoLocked = Boolean(video.tier && video.tier !== 'regular' && !hasAccessToTier(video.tier));
                   return (
@@ -482,6 +485,38 @@ export default function Watch() {
                     </Link>
                   );
                 })}
+
+                {/* Tombol See More / Tampilkan Lebih Banyak */}
+                {(relatedVideos || []).length > 10 && (
+                  <div className="pt-2 flex flex-col gap-2">
+                    {visibleRelatedCount < (relatedVideos || []).length ? (
+                      <button
+                        type="button"
+                        onClick={() => setVisibleRelatedCount((prev) => prev + 10)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-bg-surface/80 hover:bg-bg-hover border border-border/50 text-xs font-bold text-white flex items-center justify-center gap-2 transition-all hover:border-brand/40 shadow-sm cursor-pointer"
+                      >
+                        <span>Tampilkan Lebih Banyak</span>
+                        <span className="text-[10px] text-text-muted bg-white/10 px-2 py-0.5 rounded-full">
+                          +{(relatedVideos || []).length - visibleRelatedCount} Video Lagi
+                        </span>
+                        <svg className="w-3.5 h-3.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setVisibleRelatedCount(10)}
+                        className="w-full py-2 px-4 rounded-xl bg-bg-surface/40 hover:bg-bg-surface border border-border/30 text-xs font-semibold text-zinc-400 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span>Tampilkan Lebih Sedikit</span>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
