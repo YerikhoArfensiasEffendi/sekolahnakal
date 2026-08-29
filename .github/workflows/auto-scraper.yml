@@ -2,14 +2,14 @@ name: Discord Scraper & ZeroStorage Auto-Publisher
 
 on:
   schedule:
-    # Otomatis berjalan setiap hari jam 01:00 Pagi WIB (18:00 UTC)
-    - cron: '0 18 * * *'
+    # Otomatis berjalan setiap jam (24/7 di cloud) untuk menyedot seluruh arsip 6.800+ video
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Batas pesan per channel (default 30)'
+        description: 'Batas video per channel per batch (default 50)'
         required: false
-        default: '30'
+        default: '50'
 
 jobs:
   parallel-category-scraper:
