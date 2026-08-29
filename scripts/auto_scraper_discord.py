@@ -151,9 +151,51 @@ def sync_payments():
     except Exception as e:
         log(f"Payment sync warning: {e}")
 
+def fetch_unuploaded_channel_videos(chan_id, existing_msg_ids, max_videos=30, max_pages=20):
+    """
+    Menjelajahi arsip riwayat channel Discord (pagination 'before=id') sampai terkumpul
+    sejumlah video baru yang belum pernah diunggah ke database.
+    """
+    unuploaded = []
+    last_id = None
+    pages = 0
+
+    while len(unuploaded) < max_videos and pages < max_pages:
+        pages += 1
+        endpoint = f"/channels/{chan_id}/messages?limit=100"
+        if last_id:
+            endpoint += f"&before={last_id}"
+
+        msgs = discord_api(endpoint)
+        if not msgs or not isinstance(msgs, list):
+            break
+
+        last_id = msgs[-1].get("id")
+
+        for m in msgs:
+            msg_id = m.get("id")
+            if msg_id in existing_msg_ids:
+                continue
+
+            attachments = m.get("attachments", [])
+            for att in attachments:
+                ctype = (att.get("content_type") or "").lower()
+                fname = (att.get("filename") or "").lower()
+                if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v")):
+                    unuploaded.append(m)
+                    break
+
+            if len(unuploaded) >= max_videos:
+                break
+
+        if len(msgs) < 100:
+            break
+
+    return unuploaded
+
 def main(target_group="all", target_category=None, limit=30):
     log("==========================================================")
-    log(f"🔥 MASTER SCRAPER: Group='{target_group.upper()}', Cat='{target_category or 'ALL'}' 🔥")
+    log(f"🔥 MASTER SCRAPER: Group='{target_group.upper()}', Cat='{target_category or 'ALL'}', Target/Chan={limit} 🔥")
     log("==========================================================")
 
     if target_group in ("all", "reguler", "vip-lokal-asia"):
@@ -184,35 +226,16 @@ def main(target_group="all", target_category=None, limit=30):
             category = chan["category"]
             tier = chan["tier"]
 
-            log(f"\n[{idx}/{len(selected_channels)}] Memeriksa Channel: {chan_name} (Cat: {category}, Tier: {tier.upper()})")
+            log(f"\n[{idx}/{len(selected_channels)}] Memindai Arsip Channel: {chan_name} (Cat: {category}, Tier: {tier.upper()})")
 
-            messages = discord_api(f"/channels/{chan_id}/messages?limit={limit}")
-            if not messages:
-                log(f"  -> Tidak dapat mengambil pesan dari channel {chan_name}.")
-                continue
+            # Ambil video baru dengan penjelajahan pagination riwayat channel
+            unuploaded_msgs = fetch_unuploaded_channel_videos(chan_id, existing_msg_ids, max_videos=limit)
+            log(f"  -> Ditemukan {len(unuploaded_msgs)} video baru yang siap diproses & diunggah.")
 
-            log(f"  -> Ditemukan {len(messages)} pesan terbaru.")
-            # Process from oldest to newest
-            messages.reverse()
+            # Urutkan dari yang lebih lama ke yang terbaru
+            unuploaded_msgs.reverse()
 
-            for msg in messages:
-                msg_id = msg.get("id")
-                if msg_id in existing_msg_ids:
-                    continue
-
-                attachments = msg.get("attachments", [])
-                content = (msg.get("content") or "").strip()
-
-                video_att = None
-                for att in attachments:
-                    ctype = (att.get("content_type") or "").lower()
-                    fname = (att.get("filename") or "").lower()
-                    if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v")):
-                        video_att = att
-                        break
-
-                if not video_att:
-                    continue
+            for msg in unuploaded_msgs:
 
                 # Parse clean title
                 title = ""
