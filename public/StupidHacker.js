@@ -1,7 +1,7 @@
 /**
  * =========================================================================
  *  SEKOLAH NAKAL — SECURITY WATCHDOG ACTIVE SHIELD
- *  🛑 ANTI-INSPECT & DEBUGGER TRAP
+ *  🛑 KEYBOARD SHORTCUT PROTECTOR & CLEAN CONSOLE LOG
  *  👨‍💻 Author / Web Dev: beone - sekolah nakal web dev
  * =========================================================================
  */
@@ -9,7 +9,7 @@
 (function initSekolahNakalShield() {
   'use strict';
 
-  // 1. Blokir Tombol Keyboard Developer Tools
+  // 1. Blokir Tombol Keyboard Developer Tools & Source Inspection
   document.addEventListener('keydown', function (e) {
     if (e.key === 'F12' || e.keyCode === 123) {
       e.preventDefault(); e.stopPropagation(); return false;
@@ -60,37 +60,4 @@
       'color: #fefefe; font-size: 13px; font-weight: bold; line-height: 1.6; background-color: #1c0a0c; padding: 10px 14px; border-left: 5px solid #ff3344; border-radius: 6px;'
     );
   } catch (err) {}
-
-  // 3. Anti-Debugger Trap (Hanya dipicu saat DevTools terdeteksi di desktop)
-  function triggerDebuggerTrap() {
-    try {
-      (function recursiveTrap(i) {
-        if (('' + i / i).length !== 1 || i % 20 === 0) {
-          (function () {}).constructor('debugger')();
-        } else {
-          debugger;
-        }
-        if (i < 50) recursiveTrap(++i);
-      })(0);
-    } catch (e) {}
-  }
-
-  // 4. DevTools Dimension Trigger (Skip pada mobile/touch untuk menghindari false positive iOS)
-  var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-  var devtoolsOpen = false;
-  var threshold = 160;
-
-  function checkDevTools() {
-    if (isTouchDevice) return;
-    var w = window.outerWidth - window.innerWidth > threshold;
-    var h = window.outerHeight - window.innerHeight > threshold;
-    if (w || h) {
-      if (!devtoolsOpen) { devtoolsOpen = true; triggerDebuggerTrap(); }
-    } else {
-      devtoolsOpen = false;
-    }
-  }
-
-  window.addEventListener('resize', checkDevTools, { passive: true });
-  setInterval(checkDevTools, 1500);
 })();

@@ -17,7 +17,7 @@ import {
 } from '@/components/icons';
 
 const AVATAR_PRESETS = [
-  '/images/logo.png',
+  '/images/logo_v2.png',
   'https://api.dicebear.com/7.x/adventurer/svg?seed=NakalCyber1&backgroundColor=1e1b4b,312e81,0f172a',
   'https://api.dicebear.com/7.x/bottts/svg?seed=RoboNakalVVIP&backgroundColor=4c1d95,581c87,0f172a',
   'https://api.dicebear.com/7.x/lorelei/svg?seed=ViperQueen99&backgroundColor=134e4a,064e3b,0f172a',

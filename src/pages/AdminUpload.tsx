@@ -37,6 +37,7 @@ import {
   discordRealtimeService,
   type DiscordChannelInfo,
   type DiscordSyncLog,
+  type DiscordPaymentRecord,
 } from '@/services/discordRealtime.service';
 
 type StudioTab = 'dashboard' | 'content' | 'upload' | 'discord_realtime' | 'categories' | 'ads' | 'settings';
@@ -290,9 +291,26 @@ export default function AdminUpload() {
   // ================= 2.1 DISCORD REALTIME & LOGS STATE =================
   const [discordChannels, setDiscordChannels] = useState<DiscordChannelInfo[]>([]);
   const [discordLogs, setDiscordLogs] = useState<DiscordSyncLog[]>([]);
+  const [discordPayments, setDiscordPayments] = useState<DiscordPaymentRecord[]>([]);
   const [isLoadingDiscordChannels, setIsLoadingDiscordChannels] = useState(false);
   const [isSyncingDiscord, setIsSyncingDiscord] = useState(false);
+  const [isLoadingPayments, setIsLoadingPayments] = useState(false);
   const [isAutoPollActive, setIsAutoPollActive] = useState(true);
+
+  const loadDiscordPayments = async (force = false) => {
+    setIsLoadingPayments(true);
+    const res = await discordRealtimeService.getPayments(force);
+    if (res.success) {
+      setDiscordPayments(res.payments);
+    }
+    setIsLoadingPayments(false);
+  };
+
+  const handleSyncPayments = async () => {
+    info('Menyinkronkan riwayat transaksi dari channel #purchase-history...');
+    await loadDiscordPayments(true);
+    success('Riwayat transaksi Discord berhasil diperbarui!');
+  };
 
   const loadDiscordChannels = async () => {
     setIsLoadingDiscordChannels(true);
@@ -358,6 +376,7 @@ export default function AdminUpload() {
     if (!isAuthorized) return;
     loadDiscordChannels();
     loadDiscordLogs();
+    loadDiscordPayments();
 
     const interval = setInterval(() => {
       if (isAutoPollActive) {
@@ -461,7 +480,7 @@ export default function AdminUpload() {
       success(`✓ File "${file.name}" siap di-draft! Durasi: ${formatDuration(meta.duration)}`);
     } catch {
       setDuration(60);
-      setPosterUrl('/images/logo.png');
+      setPosterUrl('/images/logo_v2.png');
     } finally {
       setIsProcessingFile(false);
     }
@@ -533,7 +552,7 @@ export default function AdminUpload() {
       try {
         const source = selectedFile || videoUrl;
         const result = await videoStorageService.captureCustomFrame(source, editorTimeSec, editorZoom, editorShiftX, editorShiftY);
-        if (result && result !== '/images/logo.png') {
+        if (result && result !== '/images/logo_v2.png' && result !== '/images/logo.png') {
           setPosterUrl(result);
           setBackdropUrl(result);
         }
@@ -610,8 +629,8 @@ export default function AdminUpload() {
           tier: 'regular',
           duration: meta.duration > 0 ? meta.duration : 1,
           rating: 0,
-          posterUrl: meta.posterDataUrl || '/images/logo.png',
-          backdropUrl: meta.posterDataUrl || '/images/logo.png',
+          posterUrl: meta.posterDataUrl || '/images/logo_v2.png',
+          backdropUrl: meta.posterDataUrl || '/images/logo_v2.png',
           overview: `${cleanTitle} adalah sajian video eksklusif persembahan Sekolah Nakal.`,
           status: 'ready',
         });
@@ -624,8 +643,8 @@ export default function AdminUpload() {
           tier: 'regular',
           duration: 1,
           rating: 0,
-          posterUrl: '/images/logo.png',
-          backdropUrl: '/images/logo.png',
+          posterUrl: '/images/logo_v2.png',
+          backdropUrl: '/images/logo_v2.png',
           overview: `${cleanTitle} adalah sajian video eksklusif persembahan Sekolah Nakal.`,
           status: 'ready',
         });
@@ -859,7 +878,7 @@ export default function AdminUpload() {
       return;
     }
 
-    const finalPoster = posterUrl.trim() || '/images/logo.png';
+    const finalPoster = posterUrl.trim() || '/images/logo_v2.png';
     const finalBackdrop = backdropUrl.trim() || finalPoster;
     const currentYear = new Date().getFullYear();
 
@@ -1230,7 +1249,7 @@ export default function AdminUpload() {
         {/* Full-Screen Subtle Blurry Red Logo Backdrop */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden select-none flex items-center justify-center">
           <img
-            src="/images/logo.png"
+            src="/images/logo_v2.png"
             alt="Sekolah Nakal Backdrop"
             className="w-full h-full object-cover object-center scale-105 blur-[6px] transform-gpu"
           />
@@ -2578,7 +2597,7 @@ export default function AdminUpload() {
                         />
                       ) : (
                         <img
-                          src={posterUrl || backdropUrl || '/images/logo.png'}
+                          src={posterUrl || backdropUrl || '/images/logo_v2.png'}
                           alt="Preview"
                           className="h-full w-full object-cover"
                         />
@@ -2640,7 +2659,7 @@ export default function AdminUpload() {
                     )}
 
                     {/* Active Poster Preview Card */}
-                    {posterUrl && posterUrl !== '/images/logo.png' && (
+                    {posterUrl && posterUrl !== '/images/logo_v2.png' && posterUrl !== '/images/logo.png' && (
                       <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[#121212] border border-zinc-800/80">
                         <img
                           src={posterUrl}
@@ -2960,6 +2979,114 @@ export default function AdminUpload() {
                   <span className="font-bold text-amber-300 text-[11px] block">{discordLogs.length} Aktivitas</span>
                 </div>
               </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* RIWAYAT TRANSAKSI PEMBELIAN DISCORD (CHANNEL #PURCHASE-HISTORY) */}
+            {/* ========================================================================= */}
+            <div className="rounded-2xl border border-zinc-800 bg-[#0e0e11] p-5 sm:p-6 shadow-xl space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🧾</span>
+                    <h3 className="text-base font-bold text-white tracking-tight">
+                      Riwayat Transaksi Pembelian Discord
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Channel: #purchase-history
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    Data transaksi otomatis dari bot Discord Sekolah Nakal saat member membeli role akses VIP/VVIP/Talent.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-400 font-mono">
+                    Total: <strong className="text-white">{discordPayments.length} Transaksi</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSyncPayments()}
+                    disabled={isLoadingPayments}
+                    className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-black transition-all flex items-center gap-1.5 shadow disabled:opacity-50 cursor-pointer"
+                  >
+                    <span className={isLoadingPayments ? 'animate-spin' : ''}>🔄</span>
+                    <span>{isLoadingPayments ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Transactions Table / Cards */}
+              {discordPayments.length === 0 ? (
+                <div className="p-8 text-center rounded-xl bg-black/40 border border-zinc-800/60 text-xs text-zinc-400 space-y-1">
+                  <p className="font-bold text-white">Belum Ada Riwayat Transaksi Tersinkron</p>
+                  <p className="text-[11px] text-zinc-500">Klik tombol "Sinkronkan Sekarang" untuk menarik data dari channel Discord #purchase-history.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                        <th className="py-2.5 px-3">Member Discord</th>
+                        <th className="py-2.5 px-3">Paket Akses</th>
+                        <th className="py-2.5 px-3">Order ID</th>
+                        <th className="py-2.5 px-3">Nominal</th>
+                        <th className="py-2.5 px-3 text-right">Waktu Pembelian</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-800/40">
+                      {discordPayments.map((p) => {
+                        const isVip = p.purchasedAccess.toLowerCase().includes('vvip')
+                          ? 'vvip'
+                          : p.purchasedAccess.toLowerCase().includes('telent') || p.purchasedAccess.toLowerCase().includes('talent')
+                          ? 'talent'
+                          : 'vip';
+
+                        return (
+                          <tr key={p.id || p.orderId} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="h-8 w-8 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 shrink-0 flex items-center justify-center">
+                                  {p.avatarUrl ? (
+                                    <img src={p.avatarUrl} alt={p.username} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <IconDiscord className="w-4 h-4 text-zinc-400" />
+                                  )}
+                                </div>
+                                <span className="font-bold text-white text-xs">@{p.username}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${
+                                  isVip === 'vvip'
+                                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                    : isVip === 'talent'
+                                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                                    : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                }`}
+                              >
+                                <span>{isVip === 'vvip' ? '👑' : isVip === 'talent' ? '💎' : '⭐'}</span>
+                                <span>{p.purchasedAccess}</span>
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-[11px] text-zinc-400 select-all">
+                              {p.orderId}
+                            </td>
+                            <td className="py-3 px-3 font-mono font-bold text-emerald-400 text-xs">
+                              {p.price}
+                            </td>
+                            <td className="py-3 px-3 text-right font-mono text-[11px] text-zinc-400">
+                              {p.timestamp ? new Date(p.timestamp * 1000).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : p.createdAt}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* LIVE REAL-TIME TERMINAL LOG CONSOLE */}

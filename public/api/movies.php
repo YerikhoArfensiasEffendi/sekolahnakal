@@ -27,8 +27,8 @@ $defaultMovies = [
         'id' => 'sn-101',
         'title' => 'Secret Classroom: Late Night Session Vol. 1',
         'slug' => 'secret-classroom-late-night-session-vol-1',
-        'posterUrl' => '/images/logo.png',
-        'backdropUrl' => '/images/logo.png',
+        'posterUrl' => '/images/logo_v2.png',
+        'backdropUrl' => '/images/logo_v2.png',
         'year' => 2026,
         'duration' => 124,
         'rating' => 9.4,
@@ -41,8 +41,8 @@ $defaultMovies = [
         'id' => 'sn-102',
         'title' => 'Private Office: The CEO Extravaganza',
         'slug' => 'private-office-the-ceo-extravaganza',
-        'posterUrl' => '/images/logo.png',
-        'backdropUrl' => '/images/logo.png',
+        'posterUrl' => '/images/logo_v2.png',
+        'backdropUrl' => '/images/logo_v2.png',
         'year' => 2026,
         'duration' => 118,
         'rating' => 9.7,
@@ -55,8 +55,8 @@ $defaultMovies = [
         'id' => 'sn-103',
         'title' => 'Cosplay Fantasy: Maid in Secret Chamber',
         'slug' => 'cosplay-fantasy-maid-in-secret-chamber',
-        'posterUrl' => '/images/logo.png',
-        'backdropUrl' => '/images/logo.png',
+        'posterUrl' => '/images/logo_v2.png',
+        'backdropUrl' => '/images/logo_v2.png',
         'year' => 2026,
         'duration' => 105,
         'rating' => 9.6,
@@ -69,8 +69,8 @@ $defaultMovies = [
         'id' => 'sn-104',
         'title' => 'Tokyo Night Life: Roppongi Secret Lounge',
         'slug' => 'tokyo-night-life-roppongi-secret-lounge',
-        'posterUrl' => '/images/logo.png',
-        'backdropUrl' => '/images/logo.png',
+        'posterUrl' => '/images/logo_v2.png',
+        'backdropUrl' => '/images/logo_v2.png',
         'year' => 2026,
         'duration' => 132,
         'rating' => 9.8,
@@ -83,8 +83,8 @@ $defaultMovies = [
         'id' => 'sn-105',
         'title' => 'Master Uncut: The Penthouse Sensation VVIP',
         'slug' => 'master-uncut-the-penthouse-sensation-vvip',
-        'posterUrl' => '/images/logo.png',
-        'backdropUrl' => '/images/logo.png',
+        'posterUrl' => '/images/logo_v2.png',
+        'backdropUrl' => '/images/logo_v2.png',
         'year' => 2026,
         'duration' => 145,
         'rating' => 9.9,
@@ -97,8 +97,8 @@ $defaultMovies = [
         'id' => 'sn-106',
         'title' => 'Talent Collab Vol. 1: Sweet Escape in Bali Villa',
         'slug' => 'talent-collab-vol-1-sweet-escape-in-bali-villa',
-        'posterUrl' => '/images/logo.png',
-        'backdropUrl' => '/images/logo.png',
+        'posterUrl' => '/images/logo_v2.png',
+        'backdropUrl' => '/images/logo_v2.png',
         'year' => 2026,
         'duration' => 98,
         'rating' => 9.5,
@@ -125,7 +125,7 @@ function getMovies($dataPath, $defaultMovies = []) {
                 if (isset($m['posterUrl']) && strpos($m['posterUrl'], '/uploads/posters/') === 0) {
                     $localFilePath = dirname(__DIR__) . $m['posterUrl'];
                     if (!file_exists($localFilePath)) {
-                        $m['posterUrl'] = '/images/logo.png';
+                        $m['posterUrl'] = '/images/logo_v2.png';
                     }
                 }
                 $sanitized[] = $m;
@@ -138,7 +138,7 @@ function getMovies($dataPath, $defaultMovies = []) {
 }
 
 function saveMoviesList($dataPath, $movies) {
-    return file_put_contents($dataPath, json_encode($movies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    return file_put_contents($dataPath, json_encode($movies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 
 $method = $_SERVER['REQUEST_METHOD'];

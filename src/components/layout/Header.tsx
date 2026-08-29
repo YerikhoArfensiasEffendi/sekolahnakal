@@ -6,9 +6,19 @@ import { useSiteGate } from '@/contexts/SiteGateContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
 import { env } from '@/config/env';
-import { ROUTES, watchPath } from '@/constants/routes';
-import { getTierBadgeConfig, DISCORD_BOT_INVITE_URL, TELEGRAM_INVITE_URL, hasUploadAccessFromRoles } from '@/utils/tier';
-import { IconCrown, IconStar, IconDiamond, IconLogout, IconDiscord, IconTelegram } from '@/components/icons';
+import { ROUTES } from '@/constants/routes';
+import { getTierBadgeConfig, DISCORD_BOT_INVITE_URL, hasUploadAccessFromRoles } from '@/utils/tier';
+import {
+  IconCrown,
+  IconLogout,
+  IconTag,
+  IconUsers,
+  IconMessageSquare,
+  IconSettings,
+  IconBookmark,
+  IconIdCard,
+  IconUser,
+} from '@/components/icons';
 import { movieStore } from '@/services/movieStore.service';
 
 const NAV_LINKS = [
@@ -50,12 +60,14 @@ export function Header() {
     : [];
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close menus and search on click outside
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -80,62 +92,53 @@ export function Header() {
 
   const handleSelectResult = (movieId: string) => {
     setIsSearchFocused(false);
-    setIsMobileSearchOpen(false);
     setSearchQuery('');
-    navigate(watchPath(movieId));
+    navigate(`/watch/${movieId}`);
   };
 
   return (
     <header
       className={cn(
-        'fixed top-0 right-0 left-0 z-50 transition-colors duration-300',
+        'fixed top-0 left-0 right-0 z-40 transition-all duration-300',
         isScrolled
-          ? 'bg-bg-primary/95 shadow-xl backdrop-blur-md border-b border-border/40'
-          : 'bg-gradient-to-b from-black/85 via-black/40 to-transparent'
+          ? 'bg-[#0b0914]/90 backdrop-blur-xl border-b border-white/10 shadow-2xl py-2 sm:py-2.5'
+          : 'bg-gradient-to-b from-black/90 via-black/50 to-transparent py-3 sm:py-4'
       )}
     >
-      <nav className="w-full flex h-16 items-center justify-between px-2 sm:px-4 lg:px-6">
-        {/* Mobile Full Search Input Bar */}
+      <div className="mx-auto flex max-w-[1920px] items-center justify-between px-3 sm:px-6 lg:px-8">
+        {/* Mobile Live Search Modal/Bar */}
         <AnimatePresence>
           {isMobileSearchOpen && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute inset-0 z-50 flex items-center bg-bg-primary px-3 gap-2"
+              className="absolute inset-x-0 top-0 z-50 flex items-center gap-2 bg-[#0d0a17] border-b border-white/10 p-3 shadow-2xl"
             >
-              <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <input
-                    ref={mobileSearchInputRef}
-                    type="text"
-                    autoFocus
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Ketik judul, genre, atau artis..."
-                    className="w-full h-10 pl-9 pr-8 rounded-full bg-white/10 border border-white/20 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-brand"
-                  />
-                  <svg className="w-4 h-4 absolute left-3 top-3 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-white text-xs"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className="px-3.5 py-2 rounded-full bg-brand text-white text-xs font-bold"
-                >
-                  Cari
-                </button>
+              <form onSubmit={handleSearchSubmit} className="flex-1 relative">
+                <input
+                  ref={mobileSearchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari video..."
+                  className="w-full h-9 pl-9 pr-8 rounded-lg bg-white/10 border border-white/15 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-pink-500"
+                />
+                <svg className="w-4 h-4 absolute left-3 top-2.5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-zinc-400 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
               </form>
               <button
+                type="button"
                 onClick={() => setIsMobileSearchOpen(false)}
                 className="p-2 text-zinc-400 hover:text-white text-xs font-semibold"
               >
@@ -147,12 +150,13 @@ export function Header() {
 
         {/* Logo & Desktop Nav Links */}
         <div className="flex items-center gap-6 sm:gap-8">
-          <Link to="/" className="flex shrink-0 items-center gap-2.5">
-            <img src="/images/logo.png" alt={env.APP_NAME} className="h-9 w-auto object-contain" />
-            <span className="hidden text-xl font-black tracking-tight text-white sm:block">
-              {env.APP_NAME}
-            </span>
-            <span className="bg-red-600/20 text-red-400 border border-red-500/40 px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider">
+          <Link to="/" className="flex shrink-0 items-center gap-2.5 group">
+            <img
+              src="/images/logo_v2.png"
+              alt={env.APP_NAME}
+              className="h-9 sm:h-10 w-auto object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-[0_2px_10px_rgba(255,51,120,0.3)]"
+            />
+            <span className="bg-pink-600/20 text-pink-400 border border-pink-500/40 px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider">
               18+
             </span>
           </Link>
@@ -166,7 +170,7 @@ export function Header() {
                   className={({ isActive }) =>
                     cn(
                       'text-sm font-semibold transition-colors flex items-center gap-1.5',
-                      isActive ? 'text-white font-bold text-brand' : 'text-text-secondary hover:text-white'
+                      isActive ? 'text-white font-bold text-pink-500' : 'text-zinc-400 hover:text-white'
                     )
                   }
                 >
@@ -182,10 +186,10 @@ export function Header() {
           )}
         </div>
 
-        {/* Right Action Icons, Interactive Search & User Menu */}
+        {/* Right Action Icons & User Menu Bar */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Interactive Live Search Input (Desktop & Tablet) */}
-          <div ref={searchContainerRef} className="relative hidden sm:block">
+          <div ref={searchContainerRef} className="relative hidden md:block">
             <form onSubmit={handleSearchSubmit} className="relative flex items-center">
               <input
                 ref={searchInputRef}
@@ -197,7 +201,7 @@ export function Header() {
                   setIsSearchFocused(true);
                 }}
                 placeholder="Cari video..."
-                className="h-8 pl-8 pr-7 rounded-full bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/15 focus:border-brand text-xs text-white placeholder-zinc-400 focus:outline-none transition-all duration-200 w-36 md:w-56 lg:focus:w-72"
+                className="h-8.5 pl-8 pr-7 rounded-lg bg-[#14111f] hover:bg-[#1a1727] focus:bg-[#1a1727] border border-white/10 focus:border-pink-500/50 text-xs text-white placeholder-zinc-400 focus:outline-none transition-all duration-200 w-32 lg:w-48 lg:focus:w-64"
               />
               <svg className="w-3.5 h-3.5 absolute left-2.5 text-zinc-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -221,9 +225,9 @@ export function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.98 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-[#121212]/95 backdrop-blur-xl border border-zinc-800 shadow-2xl p-2 z-50 space-y-1"
+                  className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-[#12101b]/98 backdrop-blur-xl border border-white/10 shadow-2xl p-2 z-50 space-y-1"
                 >
-                  <div className="px-2.5 py-1 text-[11px] font-bold text-zinc-400 border-b border-zinc-800 flex justify-between">
+                  <div className="px-2.5 py-1 text-[11px] font-bold text-zinc-400 border-b border-white/5 flex justify-between">
                     <span>Hasil Pencarian Cepat</span>
                     <span>{liveResults.length} Video</span>
                   </div>
@@ -237,15 +241,15 @@ export function Header() {
                       <div
                         key={movie.id}
                         onClick={() => handleSelectResult(movie.id)}
-                        className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors group"
+                        className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group"
                       >
                         <img
-                          src={movie.backdropUrl || movie.posterUrl || '/images/logo.png'}
+                          src={movie.backdropUrl || movie.posterUrl || '/images/logo_v2.png'}
                           alt={movie.title}
-                          className="h-10 w-14 rounded-lg object-cover bg-zinc-900 border border-zinc-800"
+                          className="h-10 w-14 rounded object-cover bg-zinc-900 border border-white/10"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-white truncate group-hover:text-brand transition-colors">
+                          <p className="text-xs font-bold text-white truncate group-hover:text-pink-400 transition-colors">
                             {movie.title}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
@@ -262,7 +266,7 @@ export function Header() {
 
                   <button
                     onClick={handleSearchSubmit}
-                    className="w-full text-center py-2 mt-1 rounded-lg bg-brand/20 hover:bg-brand text-brand hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                    className="w-full text-center py-2 mt-1 rounded-lg bg-pink-500/20 hover:bg-pink-500 text-pink-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
                   >
                     Lihat Semua Hasil di Halaman Pencarian →
                   </button>
@@ -277,7 +281,7 @@ export function Header() {
               setIsMobileSearchOpen(true);
               setTimeout(() => mobileSearchInputRef.current?.focus(), 50);
             }}
-            className="sm:hidden flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:text-white hover:bg-white/10 transition-colors"
+            className="md:hidden flex h-8.5 w-8.5 items-center justify-center rounded-lg bg-[#14101e] border border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="Buka Pencarian"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -285,163 +289,191 @@ export function Header() {
             </svg>
           </button>
 
-          {/* Discord Server Link */}
-          <a
-            href={DISCORD_BOT_INVITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:text-[#5865F2] hover:bg-[#5865F2]/10 transition-colors"
-            aria-label="Server Discord Resmi"
-            title="Gabung Server Discord"
-          >
-            <IconDiscord className="w-4 h-4" />
-          </a>
+          {/* Sleek Icon Button Bar Matching Reference Style */}
+          <div className="flex items-center gap-1 sm:gap-1.5 bg-[#14101e] border border-white/10 p-1 rounded-xl shadow-inner">
+            {/* 1. Tag / Promo Icon */}
+            <Link
+              to="/exclusive-info"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-pink-400 hover:bg-white/[0.06] transition-colors"
+              title="Paket Akses & Promo"
+              aria-label="Paket Akses & Promo"
+            >
+              <IconTag className="w-4 h-4" />
+            </Link>
 
-          {/* Telegram Channel Link */}
-          <a
-            href={TELEGRAM_INVITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:text-[#229ED9] hover:bg-[#229ED9]/10 transition-colors"
-            aria-label="Channel Telegram Resmi"
-            title="Gabung Channel Telegram"
-          >
-            <IconTelegram className="w-4 h-4" />
-          </a>
+            {/* 2. Community / Private Server Icon */}
+            <Link
+              to="/private-server"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-purple-400 hover:bg-white/[0.06] transition-colors"
+              title="Feed Komunitas & Private Server"
+              aria-label="Feed Komunitas"
+            >
+              <IconUsers className="w-4 h-4" />
+            </Link>
 
-          {isAuthenticated ? (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <Link
-                to="/watchlist"
-                className="hidden sm:inline-block text-sm font-semibold text-text-secondary transition-colors hover:text-white"
+            {/* 3. Discord Chat Icon */}
+            <a
+              href={DISCORD_BOT_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-[#5865F2] hover:bg-white/[0.06] transition-colors"
+              title="Chat Server Discord"
+              aria-label="Chat Server Discord"
+            >
+              <IconMessageSquare className="w-4 h-4" />
+            </a>
+
+            {/* 4. Settings Icon */}
+            <Link
+              to="/settings"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              title="Pengaturan"
+              aria-label="Pengaturan"
+            >
+              <IconSettings className="w-4 h-4" />
+            </Link>
+
+            {/* 5. User Profile Button with Gradient Circle */}
+            <div ref={dropdownRef} className="relative flex items-center">
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-[#ff3b7b] via-[#e60067] to-[#7928ca] text-white font-black text-xs shadow-md border border-white/20 hover:scale-105 active:scale-95 transition-transform cursor-pointer overflow-hidden"
+                aria-expanded={isUserMenuOpen}
+                aria-label="Menu pengguna"
               >
-                Daftar Saya
-              </Link>
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <span>{user?.name ? user.name.slice(0, 2).toUpperCase() : 'ON'}</span>
+                )}
+              </button>
 
-              {/* User Dropdown */}
-              <div ref={dropdownRef} className="relative flex items-center gap-2">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 rounded-full focus-visible:outline-brand ring-2 ring-transparent hover:ring-brand transition-all p-0.5"
-                  aria-expanded={isUserMenuOpen}
-                  aria-label="Menu pengguna"
-                >
-                  <div className="relative">
-                    {user?.avatarUrl ? (
-                      <img
-                        src={user.avatarUrl}
-                        alt=""
-                        className="h-8 w-8 rounded-full object-cover border border-border"
-                      />
-                    ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-sm font-bold text-white shadow">
-                        {user?.name?.charAt(0).toUpperCase()}
+              {/* User Dropdown Menu Matching Reference Image */}
+              <AnimatePresence>
+                {isUserMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2.5 w-60 rounded-2xl bg-[#13111c]/98 backdrop-blur-2xl border border-white/10 p-2.5 shadow-2xl z-50 space-y-1"
+                  >
+                    {/* Header Profile with Gradient Avatar */}
+                    <div className="flex items-center gap-3 p-2 mb-1 rounded-xl bg-white/[0.03] border border-white/5">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[#ff3b7b] to-[#9b42f5] flex items-center justify-center font-black text-white text-sm shrink-0 shadow-md">
+                        {user?.avatarUrl ? (
+                          <img src={user.avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                        ) : (
+                          <span>{user?.name ? user.name.slice(0, 2).toUpperCase() : 'ON'}</span>
+                        )}
                       </div>
-                    )}
-                    {tier !== 'regular' && (
-                      <span className="absolute -bottom-1 -right-1 flex items-center justify-center h-3.5 w-3.5 rounded bg-black border border-border">
-                        {tierConfig.iconType === 'crown' && <IconCrown className="w-2.5 h-2.5 text-amber-400" />}
-                        {tierConfig.iconType === 'star' && <IconStar className="w-2.5 h-2.5 text-purple-400" />}
-                        {tierConfig.iconType === 'diamond' && <IconDiamond className="w-2.5 h-2.5 text-cyan-400" />}
-                      </span>
-                    )}
-                  </div>
-                </button>
-
-                <AnimatePresence>
-                  {isUserMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-bg-surface/95 backdrop-blur-xl border border-border/80 p-2 shadow-2xl z-50 space-y-0.5"
-                    >
-                      <div className="px-3 py-2 border-b border-border/30 mb-1 space-y-1">
-                        <p className="text-sm font-bold text-white truncate">{user?.name}</p>
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`inline-flex items-center gap-1 ${tierConfig.badgeClass}`}
-                          >
-                            {tierConfig.iconType === 'crown' && <IconCrown className="w-3 h-3" />}
-                            {tierConfig.iconType === 'star' && <IconStar className="w-3 h-3" />}
-                            {tierConfig.iconType === 'diamond' && <IconDiamond className="w-3 h-3" />}
-                            <span>{tierConfig.label}</span>
-                          </span>
-                        </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-white truncate">
+                          {user?.name || 'onlyxavira'}
+                        </p>
+                        <p className="text-[11px] text-zinc-400 font-medium truncate">
+                          {tierConfig.label === 'REGULAR' ? 'Member' : `${tierConfig.label} Member`}
+                        </p>
                       </div>
+                    </div>
 
+                    {/* Menu Items with Icons */}
+                    <div className="space-y-0.5 pt-1">
                       <Link
                         to="/profile"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="block px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:bg-bg-hover hover:text-white transition-colors"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
                       >
-                        Profil Akun
+                        <IconUser className="w-4 h-4 text-zinc-400" />
+                        <span>Profil Saya</span>
                       </Link>
+
+                      <Link
+                        to="/profile?tab=public"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+                      >
+                        <IconIdCard className="w-4 h-4 text-zinc-400" />
+                        <span>Profil Publik</span>
+                      </Link>
+
+                      <Link
+                        to="/private-server"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+                      >
+                        <IconUsers className="w-4 h-4 text-zinc-400" />
+                        <span>Feed Komunitas</span>
+                      </Link>
+
+                      <a
+                        href={DISCORD_BOT_INVITE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+                      >
+                        <IconMessageSquare className="w-4 h-4 text-zinc-400" />
+                        <span>Chat Teman</span>
+                      </a>
+
                       <Link
                         to="/watchlist"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="block px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:bg-bg-hover hover:text-white transition-colors"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
                       >
-                        Daftar Tontonan
-                      </Link>
-                      <Link
-                        to="/history"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="block px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:bg-bg-hover hover:text-white transition-colors"
-                      >
-                        Riwayat Nonton
-                      </Link>
-                      <Link
-                        to="/settings"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="block px-3 py-1.5 rounded-lg text-xs font-medium text-text-secondary hover:bg-bg-hover hover:text-white transition-colors"
-                      >
-                        Pengaturan
+                        <IconBookmark className="w-4 h-4 text-zinc-400" />
+                        <span>Video Tersimpan</span>
                       </Link>
 
                       {hasUploadAccess && (
                         <Link
                           to="/admin"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 hover:bg-amber-500/10 hover:text-amber-300 transition-colors"
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-colors"
                         >
-                          <span>🎬 Studio Kreator / Upload</span>
+                          <IconCrown className="w-4 h-4 text-amber-400" />
+                          <span>Studio Admin / Upload</span>
                         </Link>
                       )}
+                    </div>
 
-                      <div className="border-t border-border/30 pt-1 mt-1">
+                    {/* Footer Exit Link */}
+                    <div className="border-t border-white/5 pt-1 mt-1">
+                      {isAuthenticated ? (
                         <button
                           onClick={() => {
                             setIsUserMenuOpen(false);
                             logout();
                             lock();
                           }}
-                          className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#ff3b5c] hover:bg-[#ff3b5c]/10 transition-colors text-left cursor-pointer"
                         >
-                          <IconLogout className="w-3.5 h-3.5" />
-                          <span>Keluar Akun</span>
+                          <IconLogout className="w-4 h-4 text-[#ff3b5c]" />
+                          <span>Keluar</span>
                         </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                      ) : (
+                        <Link
+                          to="/login"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-pink-400 hover:bg-pink-500/10 transition-colors text-left"
+                        >
+                          <IconUser className="w-4 h-4 text-pink-400" />
+                          <span>Masuk Akun</span>
+                        </Link>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          ) : (
-            <Link
-              to="/login"
-              className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition-all hover:bg-brand-hover shadow-md shadow-brand/20"
-            >
-              Masuk
-            </Link>
-          )}
+          </div>
 
-          {/* Mobile hamburger */}
+          {/* Mobile Navigation Toggle */}
           {isMobile && (
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="ml-1 p-2 text-text-primary rounded-lg hover:bg-white/10"
+              className="p-2 text-zinc-300 rounded-lg hover:bg-white/10"
               aria-label="Toggle navigation"
               aria-expanded={isMobileMenuOpen}
             >
@@ -455,69 +487,39 @@ export function Header() {
             </button>
           )}
         </div>
-      </nav>
+      </div>
 
-      {/* Mobile navigation drawer */}
+      {/* Mobile Menu Dropdown */}
       <AnimatePresence>
         {isMobile && isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden border-t border-border/60 bg-bg-primary/98 backdrop-blur-xl px-4 py-4 space-y-2 lg:hidden shadow-2xl"
+            className="border-b border-white/10 bg-[#0c0916]/98 backdrop-blur-2xl px-4 py-4 space-y-3"
           >
-            {NAV_LINKS.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center justify-between rounded-xl px-3 py-2.5 text-base font-semibold transition-colors',
-                    isActive
-                      ? 'bg-brand/20 text-brand'
-                      : 'text-text-secondary hover:bg-bg-hover hover:text-white'
-                  )
-                }
-              >
-                <span>{link.label}</span>
-                {link.badge && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 tracking-wider">
-                    {link.badge}
-                  </span>
-                )}
-              </NavLink>
-            ))}
-            {isAuthenticated && (
-              <NavLink
-                to="/watchlist"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'block rounded-xl px-3 py-2.5 text-base font-semibold transition-colors',
-                    isActive
-                      ? 'bg-brand/20 text-brand'
-                      : 'text-text-secondary hover:bg-bg-hover hover:text-white'
-                  )
-                }
-              >
-                Daftar Saya
-              </NavLink>
-            )}
-            {hasUploadAccess && (
-              <NavLink
-                to="/admin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'block rounded-xl px-3 py-2.5 text-base font-bold transition-colors text-amber-400 hover:bg-amber-500/10',
-                    isActive ? 'bg-amber-500/20 text-amber-300' : ''
-                  )
-                }
-              >
-                🎬 Studio Kreator / Upload
-              </NavLink>
-            )}
+            <div className="space-y-1">
+              {NAV_LINKS.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+                      isActive ? 'bg-white/10 text-pink-400 font-bold' : 'text-zinc-300 hover:bg-white/5'
+                    )
+                  }
+                >
+                  <span>{link.label}</span>
+                  {link.badge && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      {link.badge}
+                    </span>
+                  )}
+                </NavLink>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

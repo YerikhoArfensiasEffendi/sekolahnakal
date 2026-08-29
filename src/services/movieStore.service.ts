@@ -12,6 +12,7 @@
 import type { Movie, MovieDetail, StreamingData, VideoTier } from '@/types/movie';
 import { mockMovies, getMockMovieDetail, getMockStreamingData } from '@/mock/movies';
 import { videoStorageService } from './videoStorage.service';
+import { getDirectStreamUrl } from '@/utils/videoEmbed';
 
 const STORAGE_KEY = 'sekolah_nakal_movies_db';
 const EVENT_NAME = 'sekolah_nakal_movies_updated';
@@ -404,8 +405,8 @@ export const movieStore = {
       genres: data.genres && data.genres.length > 0 ? data.genres : ['Umum'],
       tier: data.tier || 'regular',
       overview: data.overview || `${data.title} adalah sebuah konten eksklusif Sekolah Nakal.`,
-      posterUrl: data.posterUrl || data.backdropUrl || '/images/logo.png',
-      backdropUrl: data.backdropUrl || data.posterUrl || '/images/logo.png',
+      posterUrl: data.posterUrl || data.backdropUrl || '/images/logo_v2.png',
+      backdropUrl: data.backdropUrl || data.posterUrl || '/images/logo_v2.png',
     };
 
     if (data.videoUrl) {
@@ -519,12 +520,18 @@ export const movieStore = {
   },
 
   async getStreamingData(id: string): Promise<StreamingData> {
-    const blobUrl = await videoStorageService.getVideoUrl(id);
-    const customUrl = localStorage.getItem(`sn_video_url_${id}`) || blobUrl;
     const detail = this.getById(id);
-    const videoStream = customUrl || detail.videoUrl;
+    let videoStream = detail?.videoUrl?.trim() || '';
+
+    // Jika videoUrl tidak ada atau berupa blob usang, coba cari dari IndexedDB / localStorage
+    if (!videoStream || videoStream.startsWith('blob:')) {
+      const blobUrl = await videoStorageService.getVideoUrl(id);
+      const customUrl = localStorage.getItem(`sn_video_url_${id}`) || '';
+      videoStream = blobUrl || (customUrl && !customUrl.startsWith('blob:') ? customUrl : '') || videoStream;
+    }
 
     if (videoStream) {
+      videoStream = getDirectStreamUrl(videoStream);
       return {
         sources: [
           {

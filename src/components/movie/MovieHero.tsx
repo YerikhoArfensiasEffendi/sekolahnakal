@@ -4,14 +4,15 @@
  * 
  * Fitur:
  * - Menampilkan Banner Grafis secara full-width kanan-kiri (object-cover edge-to-edge)
- * - Carousel multi-banner: Siap diisi dengan banner-banner promo tambahan kapan saja
- * - Autoplay halus + Navigasi panah & indikator titik
+ * - Terintegrasi dengan Sistem Iklan / Advertising Slot ('hero-top')
+ * - Jika slot iklan dinonaktifkan (default), banner otomatis disembunyikan dan konten di bawahnya langsung naik ke atas
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Movie } from '@/types/movie';
 import { DISCORD_BOT_INVITE_URL } from '@/utils/tier';
+import { adStoreService, type AdSlotConfig } from '@/services/adStore.service';
 
 export interface BannerItem {
   id: string;
@@ -20,7 +21,7 @@ export interface BannerItem {
   title?: string;
 }
 
-// Daftar Banner Slider Utama (Bisa ditambah banner baru kapan saja)
+// Default Banner Slider List
 export const BANNER_SLIDES: BannerItem[] = [
   {
     id: 'official-banner-1',
@@ -38,26 +39,47 @@ interface MovieHeroProps {
 
 export function MovieHero({ banners = BANNER_SLIDES }: MovieHeroProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const slideList = banners.length > 0 ? banners : BANNER_SLIDES;
+  const [adConfig, setAdConfig] = useState(() => adStoreService.getConfig());
 
-  const nextSlide = useCallback(() => {
+  useEffect(() => {
+    const handleUpdate = () => {
+      setAdConfig(adStoreService.getConfig());
+    };
+    window.addEventListener('sekolah_nakal_ads_updated', handleUpdate);
+    return () => window.removeEventListener('sekolah_nakal_ads_updated', handleUpdate);
+  }, []);
+
+  const heroSlot = adConfig.slots.find((s: AdSlotConfig) => s.id === 'hero-top');
+  const isHeroAdActive = Boolean(adConfig.masterEnabled && heroSlot?.enabled);
+
+  // Jika slot iklan hero dimatikan (default), sembunyikan banner sepenuhnya agar konten naik ke atas!
+  if (!isHeroAdActive) {
+    return null;
+  }
+
+  // Jika ada mediaUrl kustom dari admin slot iklan, gunakan itu
+  const customBanners: BannerItem[] = heroSlot?.mediaUrl
+    ? [
+        {
+          id: heroSlot.id,
+          image: heroSlot.mediaUrl,
+          link: heroSlot.targetUrl || DISCORD_BOT_INVITE_URL,
+          title: heroSlot.altText || heroSlot.label,
+        },
+      ]
+    : banners;
+
+  const slideList = customBanners.length > 0 ? customBanners : BANNER_SLIDES;
+
+  const nextSlide = () => {
     if (slideList.length <= 1) return;
     setCurrentIndex((prev) => (prev + 1) % slideList.length);
-  }, [slideList.length]);
+  };
 
-  const prevSlide = useCallback(() => {
+  const prevSlide = () => {
     if (slideList.length <= 1) return;
     setCurrentIndex((prev) => (prev - 1 + slideList.length) % slideList.length);
-  }, [slideList.length]);
-
-  // Autoplay carousel every 5.5 seconds jika banner > 1
-  useEffect(() => {
-    if (slideList.length <= 1) return;
-    const timer = setInterval(() => {
-      nextSlide();
-    }, 5500);
-    return () => clearInterval(timer);
-  }, [slideList.length, nextSlide]);
+  };
 
   const currentBanner = slideList[currentIndex] ?? slideList[0]!;
 
@@ -87,14 +109,14 @@ export function MovieHero({ banners = BANNER_SLIDES }: MovieHeroProps) {
               fetchPriority="high"
             />
 
-            {/* Cinematic Vignette Overlays (Soft bottom & side vignette) */}
+            {/* Cinematic Vignette Overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-bg-primary via-transparent to-black/25 pointer-events-none" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40 pointer-events-none" />
           </a>
         </motion.div>
       </AnimatePresence>
 
-      {/* Slide Navigation Arrows (Muncul jika ada lebih dari 1 banner) */}
+      {/* Slide Navigation Arrows */}
       {slideList.length > 1 && (
         <>
           <button

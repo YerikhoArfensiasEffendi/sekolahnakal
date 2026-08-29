@@ -144,7 +144,7 @@ if ($action === 'verify_member') {
     }
 
     $cleanUsername = ltrim($username, '@');
-    $avatarUrl = '/images/logo.png';
+    $avatarUrl = '/images/logo_v2.png';
     $rolesFound = [];
     $detectedUsername = $cleanUsername ?: "Member#{$userId}";
     $detectedUserId = $userId ?: 'discord-' . time();
@@ -268,7 +268,7 @@ if ($action === 'verify_oauth_user') {
         exit;
     }
 
-    $avatarUrl = '/images/logo.png';
+    $avatarUrl = '/images/logo_v2.png';
     if (!empty($avatar) && !empty($userId)) {
         $avatarUrl = "https://cdn.discordapp.com/avatars/{$userId}/{$avatar}.png";
     }
@@ -390,7 +390,7 @@ function appendSyncLog($level, $message, $meta = []) {
     if (count($logs) > 300) {
         $logs = array_slice($logs, 0, 300);
     }
-    file_put_contents($logsFile, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    file_put_contents($logsFile, json_encode($logs, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 
 function cleanChannelName($rawName) {
@@ -461,16 +461,13 @@ function uploadDiscordAttachmentToZeroStorage($attachmentUrl, $fileName, $title)
     if ($upHttpCode >= 200 && $upHttpCode < 300) {
         $resData = json_decode($response, true);
         if ($resData && !empty($resData['success'])) {
-            $embedUrl = $resData['embedUrl'] ?? null;
-            if (!$embedUrl && !empty($resData['fileId'])) {
-                $embedUrl = 'https://zerostorage.net/embed/' . $resData['fileId'];
-            } elseif (!$embedUrl && !empty($resData['viewUrl'])) {
-                $embedUrl = str_replace('/watch/', '/embed/', $resData['viewUrl']);
-            }
+            $fileId = $resData['fileId'] ?? '';
+            $directStream = $fileId ? "https://zerostorage.net/api/files/{$fileId}/stream" : ($resData['embedUrl'] ?? '');
             return [
                 'success' => true,
-                'embedUrl' => $embedUrl,
-                'fileId' => $resData['fileId'] ?? '',
+                'embedUrl' => $directStream,
+                'streamUrl' => $directStream,
+                'fileId' => $fileId,
                 'size' => $resData['size'] ?? 0
             ];
         }
@@ -505,7 +502,7 @@ function ensureCategoryExists($categoryName) {
         'createdAt' => date('c')
     ];
     $categories[] = $newCategory;
-    file_put_contents($categoriesFile, json_encode($categories, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    file_put_contents($categoriesFile, json_encode($categories, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 
 function saveMovieToDatabase($movieData) {
@@ -529,7 +526,7 @@ function saveMovieToDatabase($movieData) {
     }
 
     array_unshift($movies, $movieData);
-    file_put_contents($moviesFile, json_encode($movies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    file_put_contents($moviesFile, json_encode($movies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
     return true;
 }
 
@@ -812,7 +809,7 @@ if ($action === 'poll_realtime' || $action === 'cron_sync') {
     }
 
     // Save updated state
-    file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    file_put_contents($stateFile, json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 
     echo json_encode([
         'success' => true,
@@ -842,7 +839,7 @@ if ($action === 'get_logs') {
 
 // 9. Clear Logs
 if ($action === 'clear_logs' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    file_put_contents($logsFile, json_encode([], JSON_PRETTY_PRINT));
+    file_put_contents($logsFile, json_encode([], JSON_PRETTY_PRINT), LOCK_EX);
     echo json_encode(['success' => true, 'message' => 'Log aktivitas Discord berhasil dibersihkan.']);
     exit;
 }
@@ -1004,6 +1001,98 @@ if ($action === 'scrape_channel') {
         'tier' => $tier,
         'publishedCount' => $synced,
         'items' => $syncedItems
+    ]);
+    exit;
+}
+
+// 11. Get & Scrape Discord Purchase History (Channel 1402837561130487908)
+if ($action === 'get_payments' || $action === 'scrape_payments') {
+    $paymentsFile = __DIR__ . '/data/discord_payments.json';
+    $forceScrape = ($action === 'scrape_payments') || isset($_GET['force']) || !file_exists($paymentsFile);
+
+    if ($forceScrape) {
+        $paymentChannelId = '1402837561130487908';
+        $limit = min(100, max(1, (int)($_GET['limit'] ?? 50)));
+        $res = discordApiRequest("/channels/{$paymentChannelId}/messages?limit={$limit}", $BOT_TOKEN);
+
+        if ($res['code'] === 200 && is_array($res['data'])) {
+            $messages = $res['data'];
+            $payments = [];
+
+            foreach ($messages as $msg) {
+                if (empty($msg['embeds'])) continue;
+                foreach ($msg['embeds'] as $emb) {
+                    $desc = $emb['description'] ?? '';
+
+                    // Extract Username
+                    $username = 'Member';
+                    if (preg_match('/Username\s*:\s*\*?\*?\s*`\s*([^`]+)\s*`/i', $desc, $uM)) {
+                        $username = trim($uM[1]);
+                    } elseif (preg_match('/Username\s*:\s*\*?\*?\s*([^\n\*`]+)/i', $desc, $uM)) {
+                        $username = trim($uM[1]);
+                    }
+
+                    // Extract Access
+                    $access = 'VIP';
+                    if (preg_match('/Purchased Access\s*:\s*\*?\*?\s*`\s*([^`]+)\s*`/i', $desc, $aM)) {
+                        $access = trim($aM[1]);
+                    } elseif (preg_match('/Purchased Access\s*:\s*\*?\*?\s*([^\n\*`]+)/i', $desc, $aM)) {
+                        $access = trim($aM[1]);
+                    }
+
+                    // Extract Order ID
+                    $orderId = 'ORD-' . substr($msg['id'], -8);
+                    if (preg_match('/Order Id\s*:\s*\*?\*?\s*`\s*([^`]+)\s*`/i', $desc, $oM)) {
+                        $orderId = trim($oM[1]);
+                    } elseif (preg_match('/Order Id\s*:\s*\*?\*?\s*([^\n\*`]+)/i', $desc, $oM)) {
+                        $orderId = trim($oM[1]);
+                    }
+
+                    // Extract Price
+                    $price = 'Rp30.000';
+                    if (preg_match('/Access Price\s*:\s*\*?\*?\s*`\s*([^`]+)\s*`/i', $desc, $pM)) {
+                        $price = trim($pM[1]);
+                    } elseif (preg_match('/Access Price\s*:\s*\*?\*?\s*([^\n\*`]+)/i', $desc, $pM)) {
+                        $price = trim($pM[1]);
+                    }
+
+                    // Extract Timestamp
+                    $timeUnix = strtotime($msg['timestamp'] ?? 'now');
+                    if (preg_match('/<t:(\d+):[A-Za-z]?>/i', $desc, $tM)) {
+                        $timeUnix = (int)$tM[1];
+                    }
+
+                    // Avatar
+                    $avatar = $emb['thumbnail']['url'] ?? $emb['thumbnail']['proxy_url'] ?? '';
+
+                    $payments[] = [
+                        'id' => $msg['id'],
+                        'username' => $username,
+                        'purchasedAccess' => $access,
+                        'orderId' => $orderId,
+                        'price' => $price,
+                        'timestamp' => $timeUnix,
+                        'avatarUrl' => $avatar,
+                        'createdAt' => date('c', $timeUnix)
+                    ];
+                }
+            }
+
+            file_put_contents($paymentsFile, json_encode($payments, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+            appendSyncLog('info', "Berhasil menyinkronkan " . count($payments) . " riwayat transaksi dari #purchase-history.");
+        }
+    }
+
+    $cached = [];
+    if (file_exists($paymentsFile)) {
+        $cached = json_decode(file_get_contents($paymentsFile), true) ?: [];
+    }
+
+    echo json_encode([
+        'success' => true,
+        'payments' => $cached,
+        'count' => count($cached),
+        'lastUpdated' => date('c')
     ]);
     exit;
 }

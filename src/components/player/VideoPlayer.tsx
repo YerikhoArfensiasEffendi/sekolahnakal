@@ -7,8 +7,9 @@
  * - Responsive Iframe Embed Fallback (untuk link Doodstream / Streamtape jika digunakan)
  */
 
+import { useMemo } from 'react';
 import type { StreamingData } from '@/types/movie';
-import { isEmbedUrl, extractEmbedUrl } from '@/utils/videoEmbed';
+import { isEmbedUrl, extractEmbedUrl, getDirectStreamUrl } from '@/utils/videoEmbed';
 import { ArtPlayerComponent } from './ArtPlayer';
 
 interface VideoPlayerProps {
@@ -19,7 +20,8 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ movieId, streamingData, className }: VideoPlayerProps) {
   const activeSource = streamingData.sources[0];
-  const videoUrl = activeSource?.url?.trim() || '';
+  const rawUrl = activeSource?.url?.trim() || '';
+  const videoUrl = useMemo(() => getDirectStreamUrl(rawUrl), [rawUrl]);
 
   // Jika URL kosong atau file lokal 404, tampilkan banner informatif tanpa infinite reconnect
   if (!videoUrl || videoUrl.includes('/uploads/videos/')) {
@@ -39,7 +41,7 @@ export function VideoPlayer({ movieId, streamingData, className }: VideoPlayerPr
   const isEmbed = isEmbedUrl(videoUrl);
   const embedSrc = extractEmbedUrl(videoUrl);
 
-  // Jika URL berupa embed iframe (ZeroStorage / Lulustream / Doodstream / Streamtape), gunakan iframe wrapper
+  // Jika URL berupa embed iframe (Doodstream / Streamtape / Filemoon), gunakan iframe wrapper
   if (isEmbed) {
     return (
       <div
@@ -56,11 +58,19 @@ export function VideoPlayer({ movieId, streamingData, className }: VideoPlayerPr
     );
   }
 
-  // Gunakan ArtPlayer.js modern untuk semua direct stream (MP4, HLS .m3u8, Telegram Stream, Bunny, dll.)
+  const directStreamingData: StreamingData = useMemo(() => ({
+    ...streamingData,
+    sources: streamingData.sources.map((s) => ({
+      ...s,
+      url: getDirectStreamUrl(s.url),
+    })),
+  }), [movieId, rawUrl, streamingData.poster]);
+
+  // Gunakan ArtPlayer.js modern untuk semua direct stream (MP4, HLS .m3u8, ZeroStorage CDN, Telegram Stream, Bunny, dll.)
   return (
     <ArtPlayerComponent
       movieId={movieId}
-      streamingData={streamingData}
+      streamingData={directStreamingData}
       className={className}
     />
   );

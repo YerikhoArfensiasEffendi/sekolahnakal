@@ -74,7 +74,7 @@ if ($method === 'POST') {
                 'description' => htmlspecialchars(strip_tags((string)($c['description'] ?? '')), ENT_QUOTES, 'UTF-8')
             ];
         }, $data['categories']);
-        file_put_contents($dataPath, json_encode($sanitizedCats, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        file_put_contents($dataPath, json_encode($sanitizedCats, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
         echo json_encode(['success' => true, 'categories' => $sanitizedCats]);
         exit;
     }
@@ -91,7 +91,7 @@ if ($method === 'POST') {
             'description' => htmlspecialchars(strip_tags((string)($data['description'] ?? '')), ENT_QUOTES, 'UTF-8')
         ];
         $categories[] = $newCat;
-        file_put_contents($dataPath, json_encode($categories, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        file_put_contents($dataPath, json_encode($categories, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
         echo json_encode(['success' => true, 'category' => $newCat]);
         exit;
     }

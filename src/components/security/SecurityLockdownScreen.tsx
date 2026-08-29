@@ -64,7 +64,7 @@ export function SecurityLockdownScreen({
         {/* Logo Sekolah Nakal */}
         <div className="flex justify-center">
           <img
-            src="/images/logo.png"
+            src="/images/logo_v2.png"
             alt="Sekolah Nakal"
             className="h-16 w-auto object-contain drop-shadow-2xl"
           />

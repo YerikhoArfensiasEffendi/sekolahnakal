@@ -28,7 +28,7 @@ export function PrivateAccessGate() {
         <div className="space-y-2 mb-6">
           <div className="flex justify-center mb-3">
             <img
-              src="/images/logo.png"
+              src="/images/logo_v2.png"
               alt="Sekolah Nakal"
               className="h-16 w-auto object-contain drop-shadow-xl"
             />

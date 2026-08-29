@@ -3,9 +3,27 @@
  * Mendukung Direct MP4, HLS (.m3u8), Lulustream, Doodstream, Streamtape, dll.
  */
 
+export function getDirectStreamUrl(input: string): string {
+  if (!input) return '';
+  const trimmed = input.trim();
+
+  // ZeroStorage: ubah /embed/xxx, /watch/xxx, /file/xxx menjadi direct MP4 stream endpoint
+  const zsMatch = trimmed.match(/zerostorage\.net\/(?:embed|watch|file|api\/files)\/([a-zA-Z0-9_-]+)/i);
+  if (zsMatch && zsMatch[1]) {
+    return `https://zerostorage.net/api/files/${zsMatch[1]}/stream`;
+  }
+
+  return trimmed;
+}
+
 export function isEmbedUrl(url: string): boolean {
   if (!url) return false;
   const trimmed = url.trim().toLowerCase();
+
+  // ZeroStorage memiliki direct stream endpoint yang bisa langsung diputar di ArtPlayer tanpa iklan!
+  if (trimmed.includes('zerostorage.net')) {
+    return false;
+  }
 
   // Jika berupa direct stream HLS / MP4, selalu putar di ArtPlayer asli!
   if (
@@ -13,7 +31,8 @@ export function isEmbedUrl(url: string): boolean {
     trimmed.includes('.mp4') ||
     trimmed.includes('.webm') ||
     trimmed.includes('.mkv') ||
-    trimmed.includes('/uploads/videos/')
+    trimmed.includes('/uploads/videos/') ||
+    trimmed.includes('/api/files/')
   ) {
     return false;
   }
@@ -29,7 +48,6 @@ export function isEmbedUrl(url: string): boolean {
     trimmed.includes('voe.sx') ||
     trimmed.includes('luluvdo.com/e/') ||
     trimmed.includes('lulustream.com/e/') ||
-    trimmed.includes('zerostorage.net') ||
     trimmed.includes('vidcloud') ||
     trimmed.includes('youtube.com/embed') ||
     trimmed.includes('player.vimeo.com') ||

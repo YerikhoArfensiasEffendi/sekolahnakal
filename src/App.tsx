@@ -47,7 +47,7 @@ function AppContent() {
                 const displayName = user.global_name || user.username;
                 const avatarUrl = user.avatar
                   ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
-                  : '/images/logo.png';
+                  : '/images/logo_v2.png';
 
                 return fetch('/api/discord.php?action=verify_oauth_user', {
                   method: 'POST',

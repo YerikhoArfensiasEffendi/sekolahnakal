@@ -293,7 +293,7 @@ export default function Watch() {
               <div className="flex items-center gap-3">
                 <div className="relative h-10 w-10 shrink-0 rounded-full bg-black border border-brand/50 p-1 shadow-md flex items-center justify-center">
                   <img
-                    src="/images/logo.png"
+                    src="/images/logo_v2.png"
                     alt="Official Sekolah Nakal"
                     className="h-full w-full object-contain"
                   />

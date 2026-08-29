@@ -126,4 +126,28 @@ export const discordRealtimeService = {
       return { success: false, publishedCount: 0, category: '', tier: 'regular' };
     }
   },
+
+  // Ambil & Sinkronkan Riwayat Transaksi Pembelian dari Channel 1402837561130487908
+  async getPayments(force = false): Promise<{ success: boolean; payments: DiscordPaymentRecord[]; count: number }> {
+    try {
+      const res = await fetch(`/api/discord.php?action=${force ? 'scrape_payments' : 'get_payments'}${force ? '&force=1' : ''}`);
+      if (res.ok) {
+        return await res.json();
+      }
+      return { success: false, payments: [], count: 0 };
+    } catch {
+      return { success: false, payments: [], count: 0 };
+    }
+  },
 };
+
+export interface DiscordPaymentRecord {
+  id: string;
+  username: string;
+  purchasedAccess: string;
+  orderId: string;
+  price: string;
+  timestamp: number;
+  avatarUrl: string;
+  createdAt: string;
+}

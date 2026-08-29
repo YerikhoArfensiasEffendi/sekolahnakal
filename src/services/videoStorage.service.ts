@@ -183,7 +183,7 @@ export const videoStorageService = {
             ? Math.round(video.currentTime)
             : 60;
 
-        const defaultPoster = posterUrl || '/images/logo.png';
+        const defaultPoster = posterUrl || '/images/logo_v2.png';
         resolve({
           duration: finalDur > 0 ? finalDur : 60,
           rawDurationSec: finalDur > 0 ? finalDur : 60,
@@ -225,7 +225,7 @@ export const videoStorageService = {
               return;
             }
           } catch {}
-          finish('/images/logo.png');
+          finish('/images/logo_v2.png');
         }
       }, 3500);
 
@@ -248,7 +248,7 @@ export const videoStorageService = {
         canvas.width = targetW;
         canvas.height = targetH;
         const ctx = canvas.getContext('2d');
-        if (!ctx) return '/images/logo.png';
+        if (!ctx) return '/images/logo_v2.png';
 
         ctx.fillStyle = '#080808';
         ctx.fillRect(0, 0, targetW, targetH);
@@ -317,7 +317,7 @@ export const videoStorageService = {
           });
           return;
         }
-        finish('/images/logo.png');
+        finish('/images/logo_v2.png');
       };
 
       video.onerror = () => {
@@ -326,7 +326,7 @@ export const videoStorageService = {
           finish(earlyCapturedFrame);
           return;
         }
-        finish('/images/logo.png');
+        finish('/images/logo_v2.png');
       };
     });
   },
@@ -372,7 +372,7 @@ export const videoStorageService = {
         if (earlyFrame) {
           finish(earlyFrame);
         } else {
-          finish('/images/logo.png');
+          finish('/images/logo_v2.png');
         }
       }, 20000);
 
@@ -410,7 +410,7 @@ export const videoStorageService = {
           canvas.height = targetH;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            finish('/images/logo.png');
+            finish('/images/logo_v2.png');
             return;
           }
 
@@ -440,13 +440,13 @@ export const videoStorageService = {
           ctx.drawImage(video, drawX, drawY, drawW, drawH);
           finish(canvas.toDataURL('image/jpeg', 0.92));
         } catch {
-          finish('/images/logo.png');
+          finish('/images/logo_v2.png');
         }
       };
 
       video.onerror = () => {
         clearTimeout(timer);
-        finish('/images/logo.png');
+        finish('/images/logo_v2.png');
       };
 
       try {

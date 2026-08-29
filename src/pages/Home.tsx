@@ -2,8 +2,11 @@
  * Halaman Utama (Beranda) Streaming Sekolah Nakal
  * Dibikin oleh: beone - sekolah nakal web dev
  * 
- * Dinamis: Memuat data dari movieStore dengan Reguler Tier di posisi teratas
- * dan sayap banner iklan yang menyatu alami ke halaman.
+ * Fitur:
+ * - Full-Width Edge-to-Edge Layout (Mepet Kanan-Kiri Bebas Sayap Iklan)
+ * - Hero Banner Slider Terintegrasi Iklan (Otomatis naik ke atas saat di-hide)
+ * - Live Bukti Transaksi Pembelian Member Discord dari Channel #purchase-history
+ * - Row Katalog Responsif Modern
  */
 
 import { useEffect, useState } from 'react';
@@ -15,8 +18,8 @@ import { MovieRow } from '@/components/movie/MovieRow';
 import { Section } from '@/components/ui/Section';
 import { MovieRowSkeleton, HeroSkeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { SideAdSlot } from '@/components/ads/SideAdSlot';
-import { IconUser } from '@/components/icons';
+import { adStoreService, type AdSlotConfig } from '@/services/adStore.service';
+import { TransactionHistoryFeed } from '@/components/payment/TransactionHistoryFeed';
 
 interface HomeData {
   featured: Movie;
@@ -34,6 +37,10 @@ type Status = 'loading' | 'success' | 'error';
 export default function Home() {
   const [data, setData] = useState<HomeData | null>(null);
   const [status, setStatus] = useState<Status>('loading');
+  const [adConfig, setAdConfig] = useState(() => adStoreService.getConfig());
+
+  const heroSlot = adConfig.slots.find((s: AdSlotConfig) => s.id === 'hero-top');
+  const isHeroAdActive = Boolean(adConfig.masterEnabled && heroSlot?.enabled);
 
   const loadData = async () => {
     try {
@@ -49,26 +56,11 @@ export default function Home() {
         }
       });
 
-      // Match continue watching movies
-      const continueWatchingMovies = (continueProgress || [])
-        .map((p) => all.find((m) => m?.id === p?.movieId))
-        .filter((m): m is Movie => m !== undefined);
+      // 1. Film Unggulan (Hero Banner)
+      const featured = all.length > 0 ? all[0]! : ({} as Movie);
+      const featuredSlides = all.slice(0, 5);
 
-      const defaultFeaturedMovie: Movie = {
-        id: 'default-hero',
-        title: 'Sekolah Nakal Streaming',
-        slug: 'sekolah-nakal',
-        genres: ['Eksklusif'],
-        rating: 9.5,
-        year: new Date().getFullYear(),
-        duration: 120,
-        tier: 'regular',
-        overview: 'Platform streaming video dewasa privat & eksklusif Sekolah Nakal.',
-        posterUrl: '/images/logo.png',
-        backdropUrl: '/images/logo.png',
-      };
-
-      // 1. Trending: Diurutkan murni berdasarkan traffic / views terbanyak ke paling sedikit
+      // 2. Sedang Tren (Urutan traffic / views terbanyak)
       const trending = [...all].sort((a, b) => {
         const viewsA = (parseInt(localStorage.getItem(`sn_views_${a.id}`) || '0', 10) || (a.views || 0));
         const viewsB = (parseInt(localStorage.getItem(`sn_views_${b.id}`) || '0', 10) || (b.views || 0));
@@ -76,18 +68,24 @@ export default function Home() {
         return (b.rating || 0) - (a.rating || 0);
       });
 
-      // 2. Random Feed: Full random acak setiap dimuat
+      // 3. Rekomendasi Acak (Full Random Discovery)
       const randomFeed = [...all].sort(() => Math.random() - 0.5);
 
-      // 3. Featured Hero Slides: Acak dari koleksi video
-      const featuredSlides = randomFeed.length > 0 ? randomFeed.slice(0, 5) : [defaultFeaturedMovie];
-      const featured = featuredSlides[0] || defaultFeaturedMovie;
+      // 4. Rilis Terbaru (Berdasarkan tahun/input)
+      const newReleases = [...all].sort((a, b) => b.year - a.year);
 
-      // 4. Rilis Terbaru: Diurutkan dari yang paling baru
-      const newReleases = [...all].sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0));
+      // 5. Paling Banyak Disukai (Rating & Likes tertinggi)
+      const popular = [...all].sort((a, b) => {
+        const likesA = parseInt(localStorage.getItem(`sn_likes_${a.id}`) || '0', 10);
+        const likesB = parseInt(localStorage.getItem(`sn_likes_${b.id}`) || '0', 10);
+        if (likesB !== likesA) return likesB - likesA;
+        return (b.rating || 0) - (a.rating || 0);
+      });
 
-      // 5. Terpopuler
-      const popular = [...all].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      // 6. Lanjutkan Menonton
+      const continueWatching = (continueProgress || [])
+        .map((p) => all.find((m) => m.id === p.movieId))
+        .filter((m): m is Movie => m !== undefined);
 
       setData({
         featured,
@@ -96,7 +94,7 @@ export default function Home() {
         randomFeed,
         newReleases,
         popular,
-        continueWatching: continueWatchingMovies,
+        continueWatching,
         progressMap,
       });
       setStatus('success');
@@ -107,19 +105,24 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
+    const handleAds = () => {
+      setAdConfig(adStoreService.getConfig());
+    };
     window.addEventListener('sekolah_nakal_movies_updated', loadData);
     window.addEventListener('sekolah_nakal_watch_progress_updated', loadData);
+    window.addEventListener('sekolah_nakal_ads_updated', handleAds);
     return () => {
       window.removeEventListener('sekolah_nakal_movies_updated', loadData);
       window.removeEventListener('sekolah_nakal_watch_progress_updated', loadData);
+      window.removeEventListener('sekolah_nakal_ads_updated', handleAds);
     };
   }, []);
 
   if (status === 'loading') {
     return (
-      <div>
-        <HeroSkeleton />
-        <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
+      <div className={isHeroAdActive ? '' : 'pt-20 sm:pt-24'}>
+        {isHeroAdActive && <HeroSkeleton />}
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 py-8 space-y-6">
           <MovieRowSkeleton />
           <MovieRowSkeleton />
           <MovieRowSkeleton />
@@ -140,82 +143,66 @@ export default function Home() {
   }
 
   return (
-    <div className="relative min-h-screen pb-16">
-      {/* Hero Banner Carousel Slider (Random Highlights) */}
+    <div className="relative min-h-screen pb-16 select-none">
+      {/* Hero Banner Carousel Slider (Advertising Slot) */}
       <MovieHero movies={data.featuredSlides.length > 0 ? data.featuredSlides : [data.featured]} />
 
-      {/* Area Konten Utama & Sayap Iklan yang Menyatu Alami */}
-      <div className="relative mx-auto max-w-[1720px] px-2 sm:px-4 flex justify-center items-start gap-4 lg:gap-6 -mt-8 z-10">
-        {/* Sayap Iklan Kiri */}
-        <SideAdSlot position="left" />
+      {/* Full-Width Edge-to-Edge Content Container (Mepet Kanan Kiri) */}
+      <div
+        className={`w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 space-y-8 z-10 relative ${
+          isHeroAdActive ? '-mt-8' : 'pt-20 sm:pt-24'
+        }`}
+      >
+        {/* Lanjutkan Menonton (Jika Ada History) */}
+        {data.continueWatching.length > 0 && (
+          <Section title="Lanjutkan Menonton" href="/history">
+            <MovieRow movies={data.continueWatching} progressMap={data.progressMap} />
+          </Section>
+        )}
 
-        {/* Baris Katalog Film Utama */}
-        <div className="flex-1 max-w-7xl min-w-0 space-y-8">
-          {/* Lanjutkan Menonton (Jika Ada History) */}
-          {data.continueWatching.length > 0 && (
-            <Section title="Lanjutkan Menonton" href="/history">
-              <MovieRow movies={data.continueWatching} progressMap={data.progressMap} />
-            </Section>
-          )}
+        {/* 1. SEDANG TREN SEKARANG */}
+        {data.trending.length > 0 && (
+          <Section title="Sedang Tren Sekarang" href="/private-server">
+            <MovieRow movies={data.trending} />
+          </Section>
+        )}
 
-          {/* 1. SEDANG TREN SEKARANG (Diurutkan dari Traffic / Views Terbanyak) */}
-          {data.trending.length > 0 && (
-            <Section
-              title={
-                <span className="flex items-center gap-2">
-                  <span>🔥</span>
-                  <span>Sedang Tren Sekarang (Traffic Tertinggi)</span>
-                </span>
-              }
-              href="/private-server"
-            >
-              <MovieRow movies={data.trending} />
-            </Section>
-          )}
+        {/* 2. REKOMENDASI ACAK */}
+        {data.randomFeed.length > 0 && (
+          <Section title="Rekomendasi Video" href="/private-server">
+            <MovieRow movies={data.randomFeed} />
+          </Section>
+        )}
 
-          {/* 2. REKOMENDASI ACAK (Full Random Discovery Feed) */}
-          {data.randomFeed.length > 0 && (
-            <Section
-              title={
-                <span className="flex items-center gap-2">
-                  <IconUser className="w-5 h-5 text-slate-400" />
-                  <span>Rekomendasi Video (Acak)</span>
-                </span>
-              }
-              href="/private-server"
-            >
-              <MovieRow movies={data.randomFeed} />
-            </Section>
-          )}
+        {/* 3. RILIS TERBARU */}
+        {data.newReleases.length > 0 && (
+          <Section title="Rilis Terbaru" href="/private-server">
+            <MovieRow movies={data.newReleases} />
+          </Section>
+        )}
 
-          {/* 3. RILIS TERBARU */}
-          {data.newReleases.length > 0 && (
-            <Section title="✨ Rilis Terbaru" href="/private-server">
-              <MovieRow movies={data.newReleases} />
-            </Section>
-          )}
+        {/* 4. PALING BANYAK DISUKAI */}
+        {data.popular.length > 0 && (
+          <Section title="Paling Banyak Disukai" href="/private-server">
+            <MovieRow movies={data.popular} />
+          </Section>
+        )}
 
-          {/* 4. PALING BANYAK DISUKAI */}
-          {data.popular.length > 0 && (
-            <Section title="⭐ Paling Banyak Disukai" href="/private-server">
-              <MovieRow movies={data.popular} />
-            </Section>
-          )}
-
-          {/* Empty State jika database kosong */}
-          {data.trending.length === 0 && data.randomFeed.length === 0 && (
-            <div className="py-20 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/80 p-8 space-y-3">
-              <div className="text-4xl">🎬</div>
-              <h3 className="text-lg font-bold text-white">Katalog Masih Kosong</h3>
-              <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
-                Belum ada video yang dipublikasikan. Silakan upload video pertama Anda melalui Studio Admin.
-              </p>
-            </div>
-          )}
+        {/* 5. RIWAYAT TRANSAKSI */}
+        <div className="pt-2">
+          <TransactionHistoryFeed limit={12} />
         </div>
 
-        {/* Sayap Iklan Kanan */}
-        <SideAdSlot position="right" />
+        {/* Empty State jika database kosong */}
+        {data.trending.length === 0 && data.randomFeed.length === 0 && (
+          <div className="py-20 text-center rounded-2xl bg-zinc-900/40 border border-zinc-800/80 p-8 space-y-3">
+            <div className="text-4xl">🎬</div>
+            <h3 className="text-lg font-bold text-white">Katalog Masih Kosong</h3>
+            <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Belum ada video yang dipublikasikan. Silakan upload video pertama Anda melalui Studio Admin.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

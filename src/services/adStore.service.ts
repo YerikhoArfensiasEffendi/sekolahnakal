@@ -12,9 +12,9 @@
 export type AdContentType = 'image' | 'embed';
 
 export interface AdSlotConfig {
-  id: string; // 'left-1', 'left-2', 'right-1', 'right-2'
+  id: string; // 'hero-top', 'left-1', 'left-2', 'right-1', 'right-2'
   label: string;
-  position: 'left' | 'right';
+  position: 'left' | 'right' | 'top';
   enabled: boolean;
   type: AdContentType;
   mediaUrl: string;
@@ -33,6 +33,17 @@ const STORAGE_KEY = 'sekolah_nakal_ads_config';
 const EVENT_NAME = 'sekolah_nakal_ads_updated';
 
 export const DEFAULT_AD_SLOTS: AdSlotConfig[] = [
+  {
+    id: 'hero-top',
+    label: 'Banner Header Slide (Hero Atas)',
+    position: 'top',
+    enabled: false,
+    type: 'image',
+    mediaUrl: '/images/banner_promo.png',
+    targetUrl: 'https://discord.com/invite/serverbokep',
+    embedCode: '',
+    altText: 'Official Banner Sekolah Nakal',
+  },
   {
     id: 'left-1',
     label: 'Sayap Kiri - Slot 1 (Atas)',
@@ -200,3 +211,5 @@ export const adStore = {
     return DEFAULT_GLOBAL_ADS;
   },
 };
+
+export const adStoreService = adStore;

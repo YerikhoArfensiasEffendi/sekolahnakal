@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const account: DiscordAccount = {
       id: `discord-${Math.floor(100000 + Math.random() * 900000)}`,
       username,
-      avatarUrl: '/images/logo.png',
+      avatarUrl: '/images/logo_v2.png',
       roles,
       tier: detectedTier,
       syncedAt: new Date().toISOString(),

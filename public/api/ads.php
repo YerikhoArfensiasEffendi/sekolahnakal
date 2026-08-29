@@ -24,6 +24,17 @@ $defaultAds = [
     'masterEnabled' => false,
     'slots' => [
         [
+            'id' => 'hero-top',
+            'label' => 'Banner Header Slide (Hero Atas)',
+            'position' => 'top',
+            'enabled' => false,
+            'type' => 'image',
+            'mediaUrl' => '/images/banner_promo.png',
+            'targetUrl' => 'https://discord.com/invite/serverbokep',
+            'embedCode' => '',
+            'altText' => 'Official Banner Sekolah Nakal'
+        ],
+        [
             'id' => 'left-1',
             'label' => 'Sayap Kiri - Slot 1 (Atas)',
             'position' => 'left',
@@ -75,7 +86,19 @@ function getAdsConfig($dataPath, $defaultAds) {
     if (file_exists($dataPath)) {
         $content = file_get_contents($dataPath);
         $json = json_decode($content, true);
-        if (is_array($json) && isset($json['masterEnabled'])) {
+        if (is_array($json) && isset($json['masterEnabled']) && is_array($json['slots'] ?? null)) {
+            // Merge missing slots (e.g. hero-top)
+            $existingIds = array_column($json['slots'], 'id');
+            $modified = false;
+            foreach ($defaultAds['slots'] as $defSlot) {
+                if (!in_array($defSlot['id'], $existingIds)) {
+                    array_unshift($json['slots'], $defSlot);
+                    $modified = true;
+                }
+            }
+            if ($modified) {
+                file_put_contents($dataPath, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            }
             return $json;
         }
     }
@@ -106,7 +129,7 @@ if ($method === 'POST') {
             return [
                 'id' => htmlspecialchars(strip_tags((string)($slot['id'] ?? '')), ENT_QUOTES, 'UTF-8'),
                 'label' => htmlspecialchars(strip_tags((string)($slot['label'] ?? '')), ENT_QUOTES, 'UTF-8'),
-                'position' => in_array($slot['position'] ?? '', ['left', 'right']) ? $slot['position'] : 'left',
+                'position' => in_array($slot['position'] ?? '', ['top', 'left', 'right']) ? $slot['position'] : 'left',
                 'enabled' => !empty($slot['enabled']),
                 'type' => in_array($slot['type'] ?? '', ['image', 'custom', 'embed']) ? $slot['type'] : 'image',
                 'mediaUrl' => htmlspecialchars(strip_tags((string)($slot['mediaUrl'] ?? '')), ENT_QUOTES, 'UTF-8'),
@@ -118,7 +141,7 @@ if ($method === 'POST') {
     }
 
     $data['updatedAt'] = date('c');
-    file_put_contents($dataPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    file_put_contents($dataPath, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
     echo json_encode(['success' => true, 'config' => $data]);
     exit;
 }

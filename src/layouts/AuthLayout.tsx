@@ -8,7 +8,7 @@ export function AuthLayout() {
         <div className="mb-8 text-center">
           <Link to="/" className="inline-block">
             <img
-              src="/images/logo.png"
+              src="/images/logo_v2.png"
               alt={env.APP_NAME}
               className="mx-auto h-12 w-auto"
             />

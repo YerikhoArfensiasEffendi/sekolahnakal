@@ -6,7 +6,7 @@ const DEVICE_ID_KEY = 'sekolah_nakal_device_id';
 const PROFILE_NAME_KEY = 'sekolah_nakal_profile_name';
 const PROFILE_AVATAR_KEY = 'sekolah_nakal_profile_avatar';
 
-export const DEFAULT_AVATAR = '/images/logo.png';
+export const DEFAULT_AVATAR = '/images/logo_v2.png';
 
 export function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY);

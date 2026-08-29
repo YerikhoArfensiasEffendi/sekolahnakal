@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 import { SideAdSlot } from '@/components/ads/SideAdSlot';
 import { IconDiscord, IconTelegram } from '@/components/icons';
 import { DISCORD_BOT_INVITE_URL, TELEGRAM_INVITE_URL } from '@/utils/tier';
+import { TransactionHistoryFeed } from '@/components/payment/TransactionHistoryFeed';
 
 interface PlanProps {
   id: string;
@@ -269,6 +270,9 @@ export default function ExclusiveInfo() {
               </div>
             </div>
           </div>
+
+          {/* Live Bukti Pembelian & Aktivasi Member */}
+          <TransactionHistoryFeed limit={12} />
 
           {/* FAQ Accordion Section */}
           <div className="space-y-6">

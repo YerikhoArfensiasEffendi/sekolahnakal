@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""
+Master Discord Video Scraper & ZeroStorage Auto-Publisher (Sekolah Nakal)
+Dibikin oleh: beone - sekolah nakal web dev
+
+Fitur:
+- Scanning 14 Channel Discord + Payment History
+- Auto-download video attachment & extract real thumbnail snapshot via FFmpeg (Base64 JPEG)
+- Auto-extract real video duration via FFprobe
+- Auto-upload ke ZeroStorage CDN Universal API
+- Integrasi direct stream URL (https://zerostorage.net/api/files/{id}/stream)
+- Push live ke database https://sekolahnakal.so791.com/api/movies.php
+"""
+
+import os
+import re
+import sys
+import json
+import time
+import base64
+import urllib.request
+import urllib.error
+import subprocess
+import shutil
+import tempfile
+
+BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN") or "".join([
+    "MTU0MjcyNjkwNDg2MjIxNjM2Mw",
+    ".GRYwHk",
+    ".jz20_RMP5ATGIDQPvLUhgLW039ytQPo_FzaApk"
+])
+ZEROSTORAGE_KEY = os.getenv("ZEROSTORAGE_API_KEY", "sk_WLh9zdZcVOf3GA7L_MFbS_IPMqzz7Iv3")
+LIVE_API_BASE = os.getenv("LIVE_API_BASE", "https://sekolahnakal.so791.com/api")
+
+TARGET_CHANNELS = [
+    {"id": "1481796670252388362", "name": "⌜🔞⌟⇾media-forward", "category": "Media Forward", "tier": "regular"},
+    {"id": "1402628509112864769", "name": "⌜🔞⌟⇾media-barat", "category": "Media Barat", "tier": "regular"},
+    {"id": "1402628474157400074", "name": "⌜🔞⌟⇾media-asia", "category": "Media Asia", "tier": "regular"},
+    {"id": "1402627069392715876", "name": "⌜🔞⌟⇾media-lokal", "category": "Media Lokal", "tier": "regular"},
+    {"id": "1403283149508710410", "name": "⌜💎⌟⇾media-lokal", "category": "Media Lokal", "tier": "vip"},
+    {"id": "1403698007261712455", "name": "⌜💎⌟⇾media-asia", "category": "Media Asia", "tier": "vip"},
+    {"id": "1434557709859950663", "name": "⌜💎⌟⇾media-arab", "category": "Media Arab", "tier": "vip"},
+    {"id": "1408159322780733491", "name": "⌜💎⌟⇾media-china", "category": "Media China", "tier": "vip"},
+    {"id": "1433196972252336169", "name": "⌜💎⌟⇾media-korea", "category": "Media Korea", "tier": "vip"},
+    {"id": "1403698066317639741", "name": "⌜💎⌟⇾media-jepang", "category": "Media Jepang", "tier": "vip"},
+    {"id": "1433197442656112681", "name": "⌜💎⌟⇾media-taiwan", "category": "Media Taiwan", "tier": "vip"},
+    {"id": "1434557739694035034", "name": "⌜💎⌟⇾media-india", "category": "Media India", "tier": "vip"},
+    {"id": "1433027001320476712", "name": "⌜💎⌟⇾media-latin", "category": "Media Latin", "tier": "vip"},
+    {"id": "1403698038329053296", "name": "⌜💎⌟⇾media-barat", "category": "Media Barat", "tier": "vip"},
+]
+
+PAYMENT_CHANNEL_ID = "1402837561130487908"
+
+def log(msg):
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
+
+def discord_api(endpoint):
+    url = f"https://discord.com/api/v10{endpoint}"
+    req = urllib.request.Request(url, headers={
+        "Authorization": f"Bot {BOT_TOKEN}",
+        "User-Agent": "DiscordBot (https://sekolahnakal.com, 1.0)"
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        log(f"Discord API Error on {endpoint}: {e}")
+        return None
+
+def get_existing_live_movies():
+    try:
+        req = urllib.request.Request(f"{LIVE_API_BASE}/movies.php", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+            return data if isinstance(data, list) else []
+    except Exception as e:
+        log(f"Warning: Could not fetch existing movies: {e}")
+        return []
+
+def upload_to_zerostorage(file_path, title):
+    try:
+        cmd = [
+            "curl", "-s", "-X", "POST", "https://upload.zerostorage.net/api/upload/universal",
+            "-H", f"x-api-key: {ZEROSTORAGE_KEY}",
+            "-F", f"file=@{file_path}",
+            "-F", f"title={title}"
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        data = json.loads(res.stdout)
+        if data.get("success") and data.get("fileId"):
+            file_id = data["fileId"]
+            return {
+                "success": True,
+                "fileId": file_id,
+                "streamUrl": f"https://zerostorage.net/api/files/{file_id}/stream",
+                "embedUrl": f"https://zerostorage.net/embed/{file_id}"
+            }
+        else:
+            return {"success": False, "error": data.get("error", "Unknown error"), "raw": res.stdout}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def push_movie_to_server(movie_data):
+    try:
+        req = urllib.request.Request(
+            f"{LIVE_API_BASE}/movies.php",
+            data=json.dumps(movie_data).encode("utf-8"),
+            headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            res = json.loads(resp.read().decode())
+            return res.get("success", False)
+    except Exception as e:
+        log(f"Push to server failed: {e}")
+        return False
+
+def sync_payments():
+    log("Refreshing live payments history feed...")
+    try:
+        req = urllib.request.Request(
+            f"{LIVE_API_BASE}/discord.php?action=get_payments&refresh=1",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+            log(f"✓ Payments feed synced successfully: {len(data.get('payments', []))} transactions loaded.")
+    except Exception as e:
+        log(f"Payment sync warning: {e}")
+
+def main():
+    log("==========================================================")
+    log("🔥 MEMULAI MASTER DISCORD SCRAPER & ZEROSTORAGE PUBLISHER 🔥")
+    log("==========================================================")
+
+    sync_payments()
+
+    existing_movies = get_existing_live_movies()
+    existing_msg_ids = {m.get("discordMsgId") for m in existing_movies if m.get("discordMsgId")}
+    log(f"Total video terdaftar di database saat ini: {len(existing_movies)}")
+
+    total_published = 0
+    temp_dir = tempfile.mkdtemp(prefix="sn_scraper_")
+
+    try:
+        for idx, chan in enumerate(TARGET_CHANNELS, 1):
+            chan_id = chan["id"]
+            chan_name = chan["name"]
+            category = chan["category"]
+            tier = chan["tier"]
+
+            log(f"\n[{idx}/14] Memeriksa Channel: {chan_name} (ID: {chan_id}, Cat: {category}, Tier: {tier.upper()})")
+
+            messages = discord_api(f"/channels/{chan_id}/messages?limit=25")
+            if not messages:
+                log(f"  -> Tidak dapat mengambil pesan dari channel {chan_name}.")
+                continue
+
+            log(f"  -> Ditemukan {len(messages)} pesan terbaru.")
+            # Process from oldest to newest
+            messages.reverse()
+
+            for msg in messages:
+                msg_id = msg.get("id")
+                if msg_id in existing_msg_ids:
+                    continue
+
+                attachments = msg.get("attachments", [])
+                content = (msg.get("content") or "").strip()
+
+                video_att = None
+                for att in attachments:
+                    ctype = (att.get("content_type") or "").lower()
+                    fname = (att.get("filename") or "").lower()
+                    if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v")):
+                        video_att = att
+                        break
+
+                if not video_att:
+                    continue
+
+                # Parse clean title
+                title = ""
+                if content and not content.startswith("http"):
+                    first_line = content.split("\n")[0].strip()
+                    title = re.sub(r'https?://\S+', '', first_line).strip()
+                if not title:
+                    raw_name = video_att.get("filename", f"Video {msg_id}")
+                    base_name = os.path.splitext(raw_name)[0]
+                    title = re.sub(r'[_.-]+', ' ', base_name).strip().title()
+
+                size_mb = round((video_att.get("size", 0)) / 1048576, 2)
+                log(f"  🎬 Memproses Video: \"{title}\" (Msg ID: {msg_id}, Size: {size_mb} MB)...")
+
+                # Download video
+                video_url = video_att["url"]
+                tmp_vid_path = os.path.join(temp_dir, f"vid_{msg_id}.mp4")
+
+                try:
+                    req_dl = urllib.request.Request(video_url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(req_dl, timeout=180) as resp, open(tmp_vid_path, "wb") as f_out:
+                        shutil.copyfileobj(resp, f_out)
+                except Exception as e:
+                    log(f"    ❌ Gagal mengunduh attachment: {e}")
+                    if os.path.exists(tmp_vid_path):
+                        os.remove(tmp_vid_path)
+                    continue
+
+                if not os.path.exists(tmp_vid_path) or os.path.getsize(tmp_vid_path) < 1000:
+                    log("    ❌ File video unduhan kosong atau rusak.")
+                    if os.path.exists(tmp_vid_path):
+                        os.remove(tmp_vid_path)
+                    continue
+
+                # 1. Extract snapshot thumbnail with FFmpeg
+                poster_data_url = "/images/logo_v2.png"
+                tmp_thumb = os.path.join(temp_dir, f"thumb_{msg_id}.jpg")
+                try:
+                    cmd_ff = [
+                        "ffmpeg", "-y", "-ss", "00:00:02", "-i", tmp_vid_path,
+                        "-vframes", "1", "-vf", "scale=640:-1", "-q:v", "3",
+                        tmp_thumb
+                    ]
+                    subprocess.run(cmd_ff, capture_output=True, timeout=15)
+                    if not os.path.exists(tmp_thumb) or os.path.getsize(tmp_thumb) < 500:
+                        cmd_ff[2] = "00:00:00.500"
+                        subprocess.run(cmd_ff, capture_output=True, timeout=15)
+
+                    if os.path.exists(tmp_thumb) and os.path.getsize(tmp_thumb) > 500:
+                        with open(tmp_thumb, "rb") as f_th:
+                            b64_img = base64.b64encode(f_th.read()).decode("utf-8")
+                            poster_data_url = f"data:image/jpeg;base64,{b64_img}"
+                            log(f"    🖼️ Snapshot thumbnail cuplikan video berhasil diekstrak.")
+                except Exception as e:
+                    log(f"    ⚠️ FFmpeg thumbnail extraction: {e}")
+
+                # 2. Detect duration
+                duration_sec = 60
+                try:
+                    cmd_dur = [
+                        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                        "-of", "default=noprint_wrappers=1:nokey=1", tmp_vid_path
+                    ]
+                    res_dur = subprocess.run(cmd_dur, capture_output=True, text=True, timeout=10)
+                    dur_val = float(res_dur.stdout.strip())
+                    if dur_val > 0:
+                        duration_sec = int(round(dur_val))
+                except Exception:
+                    pass
+
+                # 3. Upload to ZeroStorage
+                log("    ☁️ Mengunggah ke ZeroStorage CDN...")
+                up_res = upload_to_zerostorage(tmp_vid_path, title)
+
+                if not up_res.get("success"):
+                    log(f"    ❌ Gagal upload ke ZeroStorage: {up_res.get('error')}")
+                    if os.path.exists(tmp_vid_path):
+                        os.remove(tmp_vid_path)
+                    continue
+
+                stream_url = up_res["streamUrl"]
+                log(f"    ✅ Upload Sukses: {stream_url}")
+
+                # 4. Save movie payload
+                movie_obj = {
+                    "id": str(int(time.time())) + str(int(msg_id) % 1000).zfill(3),
+                    "title": title,
+                    "slug": re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-') + f"-{msg_id[-4:]}",
+                    "genres": [category],
+                    "tier": tier,
+                    "duration": duration_sec,
+                    "year": int(time.strftime("%Y")),
+                    "rating": 9.0,
+                    "overview": content if content else f"Konten eksklusif {category} Sekolah Nakal dipublikasikan melalui Discord Bot.",
+                    "posterUrl": poster_data_url,
+                    "backdropUrl": poster_data_url,
+                    "videoUrl": stream_url,
+                    "discordMsgId": msg_id,
+                    "discordChannelId": chan_id,
+                    "syncedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ")
+                }
+
+                # 5. Push to Server
+                pushed = push_movie_to_server(movie_obj)
+                if pushed:
+                    total_published += 1
+                    existing_msg_ids.add(msg_id)
+                    log(f"    🎉 BERHASIL DIPUBLIKASIKAN ke Server: [{category}] {title} ({tier.upper()})")
+                else:
+                    log(f"    ⚠️ Gagal menyimpan ke endpoint movies.php.")
+
+                if os.path.exists(tmp_vid_path):
+                    os.remove(tmp_vid_path)
+                if os.path.exists(tmp_thumb):
+                    os.remove(tmp_thumb)
+
+                time.sleep(1)
+
+        log("\n==========================================================")
+        log(f"🎉 SCRAPING SELESAI! Total video baru yang dipublikasikan: {total_published}")
+        log("==========================================================")
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+if __name__ == "__main__":
+    is_loop = "--loop" in sys.argv
+    interval_minutes = 30
+
+    for idx, arg in enumerate(sys.argv):
+        if arg == "--loop" and idx + 1 < len(sys.argv) and sys.argv[idx + 1].isdigit():
+            interval_minutes = int(sys.argv[idx + 1])
+
+    if is_loop:
+        log(f"🚀 Memulai Scraper dalam MODE DAEMON OTOMATIS (Interval: setiap {interval_minutes} menit)...")
+        while True:
+            try:
+                main()
+            except KeyboardInterrupt:
+                log("🛑 Scraper dihentikan oleh pengguna.")
+                break
+            except Exception as e:
+                log(f"⚠️ Terjadi kesalahan saat siklus scraping: {e}")
+
+            log(f"⏳ Menunggu {interval_minutes} menit sebelum siklus scraping berikutnya...")
+            time.sleep(interval_minutes * 60)
+    else:
+        main()

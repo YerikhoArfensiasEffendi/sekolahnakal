@@ -65,7 +65,7 @@ export function ExclusiveTierGate({ requiredTier }: ExclusiveTierGateProps) {
         <div className="relative">
           <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-black/70 border border-white/20 p-2 shadow-2xl flex items-center justify-center backdrop-blur-md">
             <img
-              src="/images/logo.png"
+              src="/images/logo_v2.png"
               alt="Logo Sekolah Nakal"
               className="h-full w-full object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]"
             />
