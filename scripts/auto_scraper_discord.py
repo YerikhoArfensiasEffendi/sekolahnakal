@@ -20,10 +20,12 @@ import time
 import random
 import base64
 import urllib.request
-import urllib.error
 import subprocess
 import shutil
 import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ai_title_generator import resolve_best_title
 
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN") or "".join([
     "MTU0MjcyNjkwNDg2MjIxNjM2Mw",
@@ -286,18 +288,8 @@ def main(target_group="all", target_category=None, limit=30):
                 part_idx = item["part_index"]
                 total_parts = item["total_parts"]
 
-                # Parse clean title
-                title = ""
-                if content and not content.startswith("http"):
-                    first_line = content.split("\n")[0].strip()
-                    title = re.sub(r'https?://\S+', '', first_line).strip()
-                if not title:
-                    raw_name = fname or f"Video {msg_id}"
-                    base_name = os.path.splitext(raw_name)[0]
-                    title = re.sub(r'[_.-]+', ' ', base_name).strip().title()
-
-                if part_idx and total_parts:
-                    title = f"{title} (Part {part_idx}/{total_parts})"
+                # Generate 100% clean, plain, natural title & overview (Bebas Nama Acak / Mentah)
+                title, auto_overview = resolve_best_title(fname or "", content or "", category, tier, unique_key)
 
                 size_mb = round(size_bytes / 1048576, 2) if size_bytes else 0
                 log(f"  🎬 Memproses Video: \"{title}\" (ID: {unique_key}, Size: {size_mb} MB)...")
@@ -401,8 +393,8 @@ def main(target_group="all", target_category=None, limit=30):
                     "duration": max(5, int(duration_sec)),
                     "rating": round(random.uniform(8.5, 9.9), 1),
                     "year": int(time.strftime("%Y")),
-                    "overview": content if content and not content.startswith("http") else f"Video arsip {category} - Komunitas Discord Sekolah Nakal.",
-                    "description": content if content and not content.startswith("http") else f"Video arsip {category} - Komunitas Discord Sekolah Nakal.",
+                    "overview": auto_overview,
+                    "description": auto_overview,
                     "tags": [category, tier.upper(), "Discord Archive", "ZeroStorage CDN", "FastStart"],
                     "videoUrl": stream_url,
                     "streamProvider": "zerostorage",
