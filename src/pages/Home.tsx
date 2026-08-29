@@ -9,7 +9,7 @@
  * - Row Katalog Responsif Modern
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { Movie, WatchProgress } from '@/types/movie';
 import { movieStore } from '@/services/movieStore.service';
 import { streamingService } from '@/services/streaming.service';
@@ -42,6 +42,15 @@ export default function Home() {
   const heroSlot = adConfig.slots.find((s: AdSlotConfig) => s.id === 'hero-top');
   const isHeroAdActive = Boolean(adConfig.masterEnabled && heroSlot?.enabled);
 
+  const randomSeedRef = useRef<Record<string, number>>({});
+
+  const getRandomWeight = (id: string) => {
+    if (randomSeedRef.current[id] === undefined) {
+      randomSeedRef.current[id] = Math.random();
+    }
+    return randomSeedRef.current[id]!;
+  };
+
   const renderMovies = (all: Movie[], continueProgress: any[] = []) => {
     const progressMap: Record<string, WatchProgress> = {};
     (continueProgress || []).forEach((p) => {
@@ -62,8 +71,8 @@ export default function Home() {
       return (b.rating || 0) - (a.rating || 0);
     });
 
-    // 3. Rekomendasi Acak (Full Random Discovery)
-    const randomFeed = [...all].sort(() => Math.random() - 0.5);
+    // 3. Rekomendasi Acak Stabil (Tidak reshuffle berulang kali)
+    const randomFeed = [...all].sort((a, b) => getRandomWeight(a.id) - getRandomWeight(b.id));
 
     // 4. Rilis Terbaru (Berdasarkan tahun/input)
     const newReleases = [...all].sort((a, b) => b.year - a.year);
@@ -119,15 +128,27 @@ export default function Home() {
 
   useEffect(() => {
     loadData();
+
+    const handleMoviesUpdate = () => {
+      const current = movieStore.getAll();
+      if (current && current.length > 0) {
+        streamingService.getContinueWatching().then((progress) => {
+          renderMovies(current, progress || []);
+        });
+      }
+    };
+
     const handleAds = () => {
       setAdConfig(adStoreService.getConfig());
     };
-    window.addEventListener('sekolah_nakal_movies_updated', loadData);
-    window.addEventListener('sekolah_nakal_watch_progress_updated', loadData);
+
+    window.addEventListener('sekolah_nakal_movies_updated', handleMoviesUpdate);
+    window.addEventListener('sekolah_nakal_watch_progress_updated', handleMoviesUpdate);
     window.addEventListener('sekolah_nakal_ads_updated', handleAds);
+
     return () => {
-      window.removeEventListener('sekolah_nakal_movies_updated', loadData);
-      window.removeEventListener('sekolah_nakal_watch_progress_updated', loadData);
+      window.removeEventListener('sekolah_nakal_movies_updated', handleMoviesUpdate);
+      window.removeEventListener('sekolah_nakal_watch_progress_updated', handleMoviesUpdate);
       window.removeEventListener('sekolah_nakal_ads_updated', handleAds);
     };
   }, []);

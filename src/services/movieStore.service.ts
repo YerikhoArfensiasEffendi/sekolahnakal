@@ -48,10 +48,15 @@ export function getStoredMovies(): Movie[] {
   return [];
 }
 
-function saveLocalMovies(movies: Movie[]): void {
+function saveLocalMovies(movies: Movie[], broadcast: boolean = true): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(movies));
-    if (typeof window !== 'undefined') {
+    const serialized = JSON.stringify(movies);
+    const existing = localStorage.getItem(STORAGE_KEY);
+    if (existing === serialized) {
+      return; // Tidak ada perubahan, jangan picu loop re-render
+    }
+    localStorage.setItem(STORAGE_KEY, serialized);
+    if (broadcast && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(EVENT_NAME));
     }
   } catch {
@@ -60,26 +65,36 @@ function saveLocalMovies(movies: Movie[]): void {
 }
 
 let hasInitialSynced = false;
+let isSyncingPromise: Promise<Movie[]> | null = null;
+
 export async function syncMoviesFromServer(): Promise<Movie[]> {
-  try {
-    const res = await fetch(`/api/movies.php?_t=${Date.now()}`, {
-      method: 'GET',
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
-      },
-    });
-    if (res.ok) {
-      const serverMovies: Movie[] = await res.json();
-      if (Array.isArray(serverMovies)) {
-        saveLocalMovies(serverMovies);
-        return serverMovies;
+  if (isSyncingPromise) return isSyncingPromise;
+
+  isSyncingPromise = (async () => {
+    try {
+      const res = await fetch(`/api/movies.php?_t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
+      if (res.ok) {
+        const serverMovies: Movie[] = await res.json();
+        if (Array.isArray(serverMovies)) {
+          saveLocalMovies(serverMovies);
+          return serverMovies;
+        }
       }
+    } catch {
+      // offline or local dev
+    } finally {
+      isSyncingPromise = null;
     }
-  } catch {
-    // offline or local dev
-  }
-  return getStoredMovies();
+    return getStoredMovies();
+  })();
+
+  return isSyncingPromise;
 }
 
 if (typeof window !== 'undefined' && !hasInitialSynced) {
