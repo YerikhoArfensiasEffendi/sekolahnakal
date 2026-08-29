@@ -236,6 +236,20 @@ def main(target_group="all", target_category=None, limit=30):
             unuploaded_msgs.reverse()
 
             for msg in unuploaded_msgs:
+                msg_id = msg.get("id")
+                attachments = msg.get("attachments", [])
+                content = (msg.get("content") or "").strip()
+
+                video_att = None
+                for att in attachments:
+                    ctype = (att.get("content_type") or "").lower()
+                    fname = (att.get("filename") or "").lower()
+                    if "video" in ctype or fname.endswith((".mp4", ".mov", ".mkv", ".webm", ".m4v")):
+                        video_att = att
+                        break
+
+                if not video_att:
+                    continue
 
                 # Parse clean title
                 title = ""
