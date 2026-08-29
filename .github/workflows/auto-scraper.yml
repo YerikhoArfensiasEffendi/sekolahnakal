@@ -2,15 +2,28 @@ name: Discord Scraper & ZeroStorage Auto-Publisher
 
 on:
   schedule:
-    # Otomatis berjalan setiap 2 jam (24/7 di cloud)
-    - cron: '0 */2 * * *'
+    # Otomatis berjalan setiap hari jam 01:00 Pagi WIB (18:00 UTC)
+    - cron: '0 18 * * *'
   workflow_dispatch:
-    # Bisa juga ditekan manual kapan saja dari web GitHub
+    inputs:
+      limit:
+        description: 'Batas pesan per channel (default 30)'
+        required: false
+        default: '30'
 
 jobs:
-  scrape-and-publish:
+  parallel-category-scraper:
+    name: "Scraper - Group: ${{ matrix.group }}"
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - reguler
+          - vip-asia-east
+          - vip-lokal-asia
+          - vip-global
 
     steps:
       - name: Checkout Repository
@@ -26,8 +39,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y ffmpeg curl
 
-      - name: Run Discord Scraper & ZeroStorage Auto-Publisher
+      - name: Run Discord Scraper for ${{ matrix.group }}
         run: |
-          python scripts/auto_scraper_discord.py
+          python scripts/auto_scraper_discord.py --group ${{ matrix.group }} --limit ${{ github.event.inputs.limit || '30' }}
         env:
           PYTHONUNBUFFERED: "1"

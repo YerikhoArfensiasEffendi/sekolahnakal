@@ -49,6 +49,31 @@ TARGET_CHANNELS = [
     {"id": "1403698038329053296", "name": "⌜💎⌟⇾media-barat", "category": "Media Barat", "tier": "vip"},
 ]
 
+CHANNEL_GROUPS = {
+    "reguler": [
+        "1481796670252388362", # Media Forward
+        "1402628509112864769", # Media Barat Reguler
+        "1402628474157400074", # Media Asia Reguler
+        "1402627069392715876", # Media Lokal Reguler
+    ],
+    "vip-asia-east": [
+        "1408159322780733491", # VIP Media China
+        "1433196972252336169", # VIP Media Korea
+        "1403698066317639741", # VIP Media Jepang
+        "1433197442656112681", # VIP Media Taiwan
+    ],
+    "vip-lokal-asia": [
+        "1403283149508710410", # VIP Media Lokal
+        "1403698007261712455", # VIP Media Asia
+    ],
+    "vip-global": [
+        "1403698038329053296", # VIP Media Barat
+        "1434557709859950663", # VIP Media Arab
+        "1434557739694035034", # VIP Media India
+        "1433027001320476712", # VIP Media Latin
+    ],
+}
+
 PAYMENT_CHANNEL_ID = "1402837561130487908"
 
 def log(msg):
@@ -95,8 +120,7 @@ def upload_to_zerostorage(file_path, title):
                 "streamUrl": f"https://zerostorage.net/api/files/{file_id}/stream",
                 "embedUrl": f"https://zerostorage.net/embed/{file_id}"
             }
-        else:
-            return {"success": False, "error": data.get("error", "Unknown error"), "raw": res.stdout}
+        return {"success": False, "error": data.get("error") or res.stdout or "Upload failed"}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -127,30 +151,42 @@ def sync_payments():
     except Exception as e:
         log(f"Payment sync warning: {e}")
 
-def main():
+def main(target_group="all", target_category=None, limit=30):
     log("==========================================================")
-    log("🔥 MEMULAI MASTER DISCORD SCRAPER & ZEROSTORAGE PUBLISHER 🔥")
+    log(f"🔥 MASTER SCRAPER: Group='{target_group.upper()}', Cat='{target_category or 'ALL'}' 🔥")
     log("==========================================================")
 
-    sync_payments()
+    if target_group in ("all", "reguler", "vip-lokal-asia"):
+        sync_payments()
 
     existing_movies = get_existing_live_movies()
     existing_msg_ids = {m.get("discordMsgId") for m in existing_movies if m.get("discordMsgId")}
     log(f"Total video terdaftar di database saat ini: {len(existing_movies)}")
 
+    # Filter target channels based on group/category
+    selected_channels = []
+    for c in TARGET_CHANNELS:
+        if target_group != "all" and target_group in CHANNEL_GROUPS:
+            if c["id"] not in CHANNEL_GROUPS[target_group]:
+                continue
+        if target_category and target_category.lower() not in c["category"].lower():
+            continue
+        selected_channels.append(c)
+
+    log(f"Memproses {len(selected_channels)} target channels dalam batch ini.")
     total_published = 0
     temp_dir = tempfile.mkdtemp(prefix="sn_scraper_")
 
     try:
-        for idx, chan in enumerate(TARGET_CHANNELS, 1):
+        for idx, chan in enumerate(selected_channels, 1):
             chan_id = chan["id"]
             chan_name = chan["name"]
             category = chan["category"]
             tier = chan["tier"]
 
-            log(f"\n[{idx}/14] Memeriksa Channel: {chan_name} (ID: {chan_id}, Cat: {category}, Tier: {tier.upper()})")
+            log(f"\n[{idx}/{len(selected_channels)}] Memeriksa Channel: {chan_name} (Cat: {category}, Tier: {tier.upper()})")
 
-            messages = discord_api(f"/channels/{chan_id}/messages?limit=25")
+            messages = discord_api(f"/channels/{chan_id}/messages?limit={limit}")
             if not messages:
                 log(f"  -> Tidak dapat mengambil pesan dari channel {chan_name}.")
                 continue
@@ -320,16 +356,25 @@ def main():
 if __name__ == "__main__":
     is_loop = "--loop" in sys.argv
     interval_minutes = 30
+    group = "all"
+    category = None
+    limit = 30
 
     for idx, arg in enumerate(sys.argv):
         if arg == "--loop" and idx + 1 < len(sys.argv) and sys.argv[idx + 1].isdigit():
             interval_minutes = int(sys.argv[idx + 1])
+        elif arg == "--group" and idx + 1 < len(sys.argv):
+            group = sys.argv[idx + 1].lower()
+        elif arg == "--category" and idx + 1 < len(sys.argv):
+            category = sys.argv[idx + 1]
+        elif arg == "--limit" and idx + 1 < len(sys.argv) and sys.argv[idx + 1].isdigit():
+            limit = int(sys.argv[idx + 1])
 
     if is_loop:
-        log(f"🚀 Memulai Scraper dalam MODE DAEMON OTOMATIS (Interval: setiap {interval_minutes} menit)...")
+        log(f"🚀 Memulai Scraper dalam MODE DAEMON OTOMATIS (Group: {group}, Interval: setiap {interval_minutes} menit)...")
         while True:
             try:
-                main()
+                main(target_group=group, target_category=category, limit=limit)
             except KeyboardInterrupt:
                 log("🛑 Scraper dihentikan oleh pengguna.")
                 break
@@ -339,4 +384,4 @@ if __name__ == "__main__":
             log(f"⏳ Menunggu {interval_minutes} menit sebelum siklus scraping berikutnya...")
             time.sleep(interval_minutes * 60)
     else:
-        main()
+        main(target_group=group, target_category=category, limit=limit)
