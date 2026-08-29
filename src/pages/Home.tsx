@@ -42,64 +42,78 @@ export default function Home() {
   const heroSlot = adConfig.slots.find((s: AdSlotConfig) => s.id === 'hero-top');
   const isHeroAdActive = Boolean(adConfig.masterEnabled && heroSlot?.enabled);
 
+  const renderMovies = (all: Movie[], continueProgress: any[] = []) => {
+    const progressMap: Record<string, WatchProgress> = {};
+    (continueProgress || []).forEach((p) => {
+      if (p?.movieId) {
+        progressMap[p.movieId] = p;
+      }
+    });
+
+    // 1. Film Unggulan (Hero Banner)
+    const featured = all.length > 0 ? all[0]! : ({} as Movie);
+    const featuredSlides = all.slice(0, 5);
+
+    // 2. Sedang Tren (Urutan traffic / views terbanyak)
+    const trending = [...all].sort((a, b) => {
+      const viewsA = (parseInt(localStorage.getItem(`sn_views_${a.id}`) || '0', 10) || (a.views || 0));
+      const viewsB = (parseInt(localStorage.getItem(`sn_views_${b.id}`) || '0', 10) || (b.views || 0));
+      if (viewsB !== viewsA) return viewsB - viewsA;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+
+    // 3. Rekomendasi Acak (Full Random Discovery)
+    const randomFeed = [...all].sort(() => Math.random() - 0.5);
+
+    // 4. Rilis Terbaru (Berdasarkan tahun/input)
+    const newReleases = [...all].sort((a, b) => b.year - a.year);
+
+    // 5. Paling Banyak Disukai (Rating & Likes tertinggi)
+    const popular = [...all].sort((a, b) => {
+      const likesA = parseInt(localStorage.getItem(`sn_likes_${a.id}`) || '0', 10);
+      const likesB = parseInt(localStorage.getItem(`sn_likes_${b.id}`) || '0', 10);
+      if (likesB !== likesA) return likesB - likesA;
+      return (b.rating || 0) - (a.rating || 0);
+    });
+
+    // 6. Lanjutkan Menonton
+    const continueWatching = (continueProgress || [])
+      .map((p) => all.find((m) => m.id === p.movieId))
+      .filter((m): m is Movie => m !== undefined);
+
+    setData({
+      featured,
+      featuredSlides,
+      trending,
+      randomFeed,
+      newReleases,
+      popular,
+      continueWatching,
+      progressMap,
+    });
+    setStatus('success');
+  };
+
   const loadData = async () => {
     try {
-      const all = await movieStore.refreshFromServer();
-      const [continueProgress] = await Promise.all([
+      const local = movieStore.getAll();
+      if (local && local.length > 0) {
+        renderMovies(local);
+      }
+
+      const [all, continueProgress] = await Promise.all([
+        movieStore.refreshFromServer(),
         streamingService.getContinueWatching(),
       ]);
 
-      const progressMap: Record<string, WatchProgress> = {};
-      (continueProgress || []).forEach((p) => {
-        if (p?.movieId) {
-          progressMap[p.movieId] = p;
-        }
-      });
-
-      // 1. Film Unggulan (Hero Banner)
-      const featured = all.length > 0 ? all[0]! : ({} as Movie);
-      const featuredSlides = all.slice(0, 5);
-
-      // 2. Sedang Tren (Urutan traffic / views terbanyak)
-      const trending = [...all].sort((a, b) => {
-        const viewsA = (parseInt(localStorage.getItem(`sn_views_${a.id}`) || '0', 10) || (a.views || 0));
-        const viewsB = (parseInt(localStorage.getItem(`sn_views_${b.id}`) || '0', 10) || (b.views || 0));
-        if (viewsB !== viewsA) return viewsB - viewsA;
-        return (b.rating || 0) - (a.rating || 0);
-      });
-
-      // 3. Rekomendasi Acak (Full Random Discovery)
-      const randomFeed = [...all].sort(() => Math.random() - 0.5);
-
-      // 4. Rilis Terbaru (Berdasarkan tahun/input)
-      const newReleases = [...all].sort((a, b) => b.year - a.year);
-
-      // 5. Paling Banyak Disukai (Rating & Likes tertinggi)
-      const popular = [...all].sort((a, b) => {
-        const likesA = parseInt(localStorage.getItem(`sn_likes_${a.id}`) || '0', 10);
-        const likesB = parseInt(localStorage.getItem(`sn_likes_${b.id}`) || '0', 10);
-        if (likesB !== likesA) return likesB - likesA;
-        return (b.rating || 0) - (a.rating || 0);
-      });
-
-      // 6. Lanjutkan Menonton
-      const continueWatching = (continueProgress || [])
-        .map((p) => all.find((m) => m.id === p.movieId))
-        .filter((m): m is Movie => m !== undefined);
-
-      setData({
-        featured,
-        featuredSlides,
-        trending,
-        randomFeed,
-        newReleases,
-        popular,
-        continueWatching,
-        progressMap,
-      });
-      setStatus('success');
+      renderMovies(all, continueProgress || []);
     } catch {
-      setStatus('error');
+      const fallback = movieStore.getAll();
+      if (fallback && fallback.length > 0) {
+        renderMovies(fallback);
+      } else {
+        setStatus('error');
+      }
     }
   };
 

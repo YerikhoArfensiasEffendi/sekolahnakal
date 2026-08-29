@@ -193,6 +193,34 @@ if ($method === 'POST') {
     $id = isset($data['id']) && !empty($data['id']) ? (string)$data['id'] : (string)(time() . rand(100, 999));
     $data['id'] = $id;
 
+    // Auto extract and save base64 poster as static file to keep movies.json tiny & fast
+    $posterDir = dirname(__DIR__) . '/uploads/posters';
+    if (!file_exists($posterDir)) {
+        @mkdir($posterDir, 0755, true);
+    }
+    if (!empty($data['posterUrl']) && str_starts_with($data['posterUrl'], 'data:image/')) {
+        $parts = explode(',', $data['posterUrl'], 2);
+        if (count($parts) === 2) {
+            $bin = base64_decode($parts[1]);
+            if ($bin && strlen($bin) > 50) {
+                $fname = 'thumb_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $id) . '.jpg';
+                file_put_contents($posterDir . '/' . $fname, $bin);
+                $data['posterUrl'] = '/uploads/posters/' . $fname;
+            }
+        }
+    }
+    if (!empty($data['backdropUrl']) && str_starts_with($data['backdropUrl'], 'data:image/')) {
+        $parts = explode(',', $data['backdropUrl'], 2);
+        if (count($parts) === 2) {
+            $bin = base64_decode($parts[1]);
+            if ($bin && strlen($bin) > 50) {
+                $fname = 'bg_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $id) . '.jpg';
+                file_put_contents($posterDir . '/' . $fname, $bin);
+                $data['backdropUrl'] = '/uploads/posters/' . $fname;
+            }
+        }
+    }
+
     // XSS Sanitization
     if (isset($data['title'])) {
         $data['title'] = htmlspecialchars(strip_tags((string)$data['title']), ENT_QUOTES, 'UTF-8');
