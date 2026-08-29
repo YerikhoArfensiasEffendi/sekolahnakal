@@ -111,6 +111,33 @@ $defaultMovies = [
     ]
 ];
 
+function deduplicateMovies($movies) {
+    $seenIds = [];
+    $seenUrls = [];
+    $seenMsgs = [];
+    $unique = [];
+
+    foreach ($movies as $m) {
+        if (!is_array($m)) continue;
+        $id = $m['id'] ?? '';
+        $vid = $m['videoUrl'] ?? '';
+        $msg = $m['discordMsgId'] ?? '';
+
+        $isDup = false;
+        if (!empty($id) && isset($seenIds[$id])) $isDup = true;
+        if (!empty($vid) && isset($seenUrls[$vid])) $isDup = true;
+        if (!empty($msg) && isset($seenMsgs[$msg])) $isDup = true;
+
+        if (!$isDup) {
+            if (!empty($id)) $seenIds[$id] = true;
+            if (!empty($vid)) $seenUrls[$vid] = true;
+            if (!empty($msg)) $seenMsgs[$msg] = true;
+            $unique[] = $m;
+        }
+    }
+    return $unique;
+}
+
 function getMovies($dataPath, $defaultMovies = []) {
     if (file_exists($dataPath)) {
         $content = file_get_contents($dataPath);
@@ -132,7 +159,7 @@ function getMovies($dataPath, $defaultMovies = []) {
                 }
                 $sanitized[] = $m;
             }
-            return $sanitized;
+            return deduplicateMovies($sanitized);
         }
     }
     file_put_contents($dataPath, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -140,7 +167,8 @@ function getMovies($dataPath, $defaultMovies = []) {
 }
 
 function saveMoviesList($dataPath, $movies) {
-    return file_put_contents($dataPath, json_encode($movies, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    $clean = deduplicateMovies($movies);
+    return file_put_contents($dataPath, json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -241,6 +269,14 @@ if ($method === 'POST') {
     $existingIndex = -1;
     foreach ($movies as $idx => $m) {
         if ($m['id'] === $id) {
+            $existingIndex = $idx;
+            break;
+        }
+        if (!empty($data['discordMsgId']) && isset($m['discordMsgId']) && $m['discordMsgId'] === $data['discordMsgId']) {
+            $existingIndex = $idx;
+            break;
+        }
+        if (!empty($data['videoUrl']) && isset($m['videoUrl']) && $m['videoUrl'] === $data['videoUrl']) {
             $existingIndex = $idx;
             break;
         }
