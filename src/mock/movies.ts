@@ -4,7 +4,7 @@
  * Author: beone - sekolah nakal web dev
  */
 
-import type { Movie, MovieDetail, StreamingData } from '@/types/movie';
+import type { Movie, MovieDetail, StreamingData, VideoTier } from '@/types/movie';
 
 const createMovie = (id: string, title: string, genres: string[], overrides?: Partial<Movie>): Movie => ({
   id,
@@ -123,15 +123,31 @@ export const mockMovies = {
 };
 
 export function getMockMovieDetail(id: string): MovieDetail {
-  const movie = movies.find((m) => m.id === id) || movies[0]!;
+  const movie = movies.find((m) => m.id === id) || {
+    id,
+    title: 'Video Streaming Sekolah Nakal',
+    slug: `video-${id}`,
+    posterUrl: '/images/logo_v2.png',
+    backdropUrl: '/images/logo_v2.png',
+    year: 2026,
+    duration: 120,
+    rating: 0,
+    genres: ['Umum'],
+    tier: 'regular',
+    overview: 'Sajian video eksklusif persembahan Sekolah Nakal.',
+  };
+  const rawTier = ((movie.tier as string) || 'regular').toLowerCase().trim();
+  const safeTier: VideoTier = rawTier === 'vip' || rawTier === 'vvip' || rawTier === 'talent' ? (rawTier as VideoTier) : 'regular';
+
   return {
     ...movie,
+    tier: safeTier,
     director: 'Official Sekolah Nakal Studio',
     cast: ['Talent Verified', 'Special Guest', 'Vidio Enjoyer Guest'],
     maturityRating: '18+',
     language: 'Indonesia / Dual Audio',
-    releaseDate: `${movie.year}-06-15`,
-    similarMovies: movies.filter((m) => m.id !== id && m.genres.some((g) => movie.genres.includes(g))).slice(0, 6),
+    releaseDate: `${movie.year || 2026}-06-15`,
+    similarMovies: movies.filter((m) => m.id !== id && m.genres?.some((g) => movie.genres?.includes(g))).slice(0, 6),
   };
 }
 

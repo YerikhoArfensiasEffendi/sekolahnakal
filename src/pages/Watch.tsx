@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import type { Movie, StreamingData } from '@/types/movie';
+import type { Movie, StreamingData, VideoTier } from '@/types/movie';
 import { movieService } from '@/services/movie.service';
 import { movieStore } from '@/services/movieStore.service';
 import { VideoPlayer } from '@/components/player/VideoPlayer';
@@ -55,9 +55,10 @@ export default function Watch() {
     if (!id) return;
     setStatus('loading');
     try {
-      const [streamData, movieDetail] = await Promise.all([
-        movieService.getStreamingData(id),
+      const [, movieDetail, streamData] = await Promise.all([
+        movieStore.refreshFromServer(),
         movieService.getById(id),
+        movieService.getStreamingData(id),
       ]);
       setData(streamData);
       setMovieInfo(movieDetail);
@@ -256,7 +257,9 @@ export default function Watch() {
   }
 
   const inWatchlist = movieInfo ? isInWatchlist(movieInfo.id) : false;
-  const isLockedByTier = Boolean(movieInfo?.tier && movieInfo.tier !== 'regular' && !hasAccessToTier(movieInfo.tier));
+  const rawTier = (movieInfo?.tier || 'regular').toLowerCase().trim();
+  const isRegular = !movieInfo?.tier || rawTier === 'regular' || rawTier === 'reguler';
+  const isLockedByTier = Boolean(!isRegular && !hasAccessToTier(rawTier as VideoTier));
   const tierConfig = movieInfo?.tier ? getTierBadgeConfig(movieInfo.tier) : null;
 
   return (

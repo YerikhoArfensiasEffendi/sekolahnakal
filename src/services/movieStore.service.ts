@@ -103,14 +103,55 @@ export const movieStore = {
       return getMockMovieDetail(id);
     }
 
+    const rawTier = ((movie.tier as string) || 'regular').toLowerCase().trim();
+    const safeTier: VideoTier = rawTier === 'vip' || rawTier === 'vvip' || rawTier === 'talent' ? (rawTier as VideoTier) : 'regular';
+
     return {
       ...movie,
+      tier: safeTier,
       director: 'Official Sekolah Nakal Studio',
       cast: ['Talent Verified', 'Special Guest', 'Official Cast'],
       maturityRating: '18+',
       language: 'Indonesia',
-      releaseDate: `${movie.year}-06-15`,
-      similarMovies: all.filter((m) => m.id !== id && m.genres.some((g) => movie.genres.includes(g))).slice(0, 6),
+      releaseDate: `${movie.year || 2026}-06-15`,
+      similarMovies: all.filter((m) => m.id !== id && m.genres?.some((g) => movie.genres?.includes(g))).slice(0, 6),
+    };
+  },
+
+  async getByIdAsync(id: string): Promise<MovieDetail> {
+    let all = getStoredMovies();
+    let movie = all.find((m) => m.id === id);
+    if (!movie) {
+      all = await syncMoviesFromServer();
+      movie = all.find((m) => m.id === id);
+    }
+    if (!movie) {
+      try {
+        const res = await fetch(`/api/movies.php?id=${encodeURIComponent(id)}&_t=${Date.now()}`);
+        if (res.ok) {
+          const single = await res.json();
+          if (single && single.id) {
+            movie = single;
+          }
+        }
+      } catch {}
+    }
+    if (!movie) {
+      return getMockMovieDetail(id);
+    }
+
+    const rawTier = ((movie.tier as string) || 'regular').toLowerCase().trim();
+    const safeTier: VideoTier = rawTier === 'vip' || rawTier === 'vvip' || rawTier === 'talent' ? (rawTier as VideoTier) : 'regular';
+
+    return {
+      ...movie,
+      tier: safeTier,
+      director: 'Official Sekolah Nakal Studio',
+      cast: ['Talent Verified', 'Special Guest', 'Official Cast'],
+      maturityRating: '18+',
+      language: 'Indonesia',
+      releaseDate: `${movie.year || 2026}-06-15`,
+      similarMovies: all.filter((m) => m.id !== id && m.genres?.some((g) => movie.genres?.includes(g))).slice(0, 6),
     };
   },
 

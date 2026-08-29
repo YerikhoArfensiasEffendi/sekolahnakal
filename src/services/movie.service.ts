@@ -53,8 +53,8 @@ export const movieService = {
   // Ambil detail film by ID
   async getById(id: string): Promise<MovieDetail> {
     if (env.USE_MOCK) {
-      await delay(80);
-      return movieStore.getById(id);
+      await delay(50);
+      return movieStore.getByIdAsync(id);
     }
     return api.get(API_ENDPOINTS.MOVIES.DETAIL(id));
   },
