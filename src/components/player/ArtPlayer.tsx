@@ -117,10 +117,13 @@ export function ArtPlayerComponent({ movieId, streamingData, className, onReady 
       url: src.url,
     }));
 
+    const isHls = initialUrl.includes('.m3u8') || initialUrl.includes('application/x-mpegURL');
+
     // Inisialisasi Artplayer Bersih & Mulus
     const artOptions: any = {
       container: artContainerRef.current,
       url: initialUrl,
+      type: isHls ? 'm3u8' : 'mp4',
       poster: streamingData.poster,
       theme: '#ff3378', // Brand Pink
       volume: 0.8,
@@ -156,11 +159,13 @@ export function ArtPlayerComponent({ movieId, streamingData, className, onReady 
         disablePictureInPicture: true,
         oncontextmenu: 'return false;',
       },
-      customType: {
-        m3u8: playM3u8,
-        'application/x-mpegURL': playM3u8,
-        'application/vnd.apple.mpegurl': playM3u8,
-      },
+      customType: isHls
+        ? {
+            m3u8: playM3u8,
+            'application/x-mpegURL': playM3u8,
+            'application/vnd.apple.mpegurl': playM3u8,
+          }
+        : {},
       controls: [],
       icons: {
         state: `<svg width="60" height="60" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="22" fill="rgba(0,0,0,0.6)" stroke="#ff3378" stroke-width="2.5"/><path d="M19 15L33 24L19 33V15Z" fill="#ffffff"/></svg>`,
@@ -260,6 +265,10 @@ export function ArtPlayerComponent({ movieId, streamingData, className, onReady 
       if (Math.abs(current - lastSavedTime) > 5) {
         saveCurrentProgress();
       }
+    });
+
+    art.on('error', (err: any) => {
+      console.warn('ArtPlayer playback event:', err);
     });
 
     art.on('ready', () => {
