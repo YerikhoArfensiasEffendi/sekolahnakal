@@ -139,8 +139,7 @@ export default function PrivateServer() {
     setSearchParams(newParams);
   };
 
-  // Determine active tier definition & available categories dynamically from real data only
-  const currentTierGroup = TIER_GROUPS.find((g) => g.id === activeTier) || TIER_GROUPS[0]!;
+  // Determine available categories dynamically from real data only
   const availableCategories = useMemo(() => {
     const list = new Set<string>();
     (categories || []).forEach((c) => {
@@ -242,132 +241,121 @@ export default function PrivateServer() {
   };
 
   return (
-    <div className="relative min-h-screen pt-20 pb-20 select-none">
+    <div className="relative min-h-screen pt-16 sm:pt-20 pb-16 select-none">
       {/* Subtle ambient light */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-80 bg-red-600/5 blur-[120px] rounded-full pointer-events-none" />
 
       {/* Main Full-Width Edge-to-Edge Content Container */}
-      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 space-y-6">
+      <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 space-y-4 sm:space-y-6">
         {/* Header Section: Editorial Typography */}
-        <div ref={gridTopRef} className="pt-4 pb-2 border-b border-white/5 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-mono font-bold tracking-widest text-emerald-400 uppercase">
-                Private Video Nodes Active
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
+        <div ref={gridTopRef} className="pt-2 pb-3 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight">
               Private Server
             </h1>
-            <p className="text-xs sm:text-sm text-zinc-400 max-w-2xl leading-relaxed">
-              Akses video eksklusif multi-resolusi berkecepatan tinggi langsung dari cloud storage privat tanpa batas limit.
+            <p className="text-xs text-zinc-400 mt-0.5 max-w-xl line-clamp-1 sm:line-clamp-none">
+              Akses video eksklusif multi-resolusi langsung dari cloud storage privat.
             </p>
           </div>
 
           {/* Member Active Status Info */}
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-[11px] text-zinc-500 font-medium">Hak Akses Anda</p>
-              <div className="flex items-center gap-1.5 justify-end">
-                {renderTierIcon(userTierConfig.iconType)}
-                <span className="text-xs font-bold text-white">{userTierConfig.label}</span>
-              </div>
+          <div className="flex items-center gap-2 bg-zinc-900/60 border border-white/10 px-3 py-1.5 rounded-xl self-start sm:self-auto shadow-sm">
+            <span className="text-[10px] text-zinc-500 font-medium">Akses:</span>
+            <div className="flex items-center gap-1.5">
+              {renderTierIcon(userTierConfig.iconType)}
+              <span className="text-xs font-bold text-white">{userTierConfig.label}</span>
             </div>
           </div>
         </div>
 
         {/* Navigation Bar: Minimalist Tier Tabs & Controls */}
-        <div className="space-y-4">
-          {/* Top Row: Tier Tabs + Search & Sort */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            {/* Seamless Pill Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              {TIER_GROUPS.map((tg) => {
-                const isSelected = activeTier === tg.id;
-                const count = tg.id === 'all'
-                  ? allMovies.length
-                  : allMovies.filter((m) => (m.tier || 'regular') === tg.id).length;
+        <div className="space-y-3">
+          {/* Top Row: Tier Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+            {TIER_GROUPS.map((tg) => {
+              const isSelected = activeTier === tg.id;
+              const count = tg.id === 'all'
+                ? allMovies.length
+                : allMovies.filter((m) => (m.tier || 'regular') === tg.id).length;
 
-                return (
-                  <button
-                    key={tg.id}
-                    onClick={() => handleSelectTier(tg.id)}
-                    className={cn(
-                      'flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border shadow-sm',
-                      isSelected
-                        ? 'bg-white text-black border-white font-bold shadow-md'
-                        : 'bg-zinc-900/60 text-zinc-400 border-white/5 hover:text-white hover:bg-zinc-800'
-                    )}
-                  >
-                    {tg.iconType !== 'all' && renderTierIcon(tg.iconType)}
-                    <span>{tg.shortLabel}</span>
-                    <span className={cn(
-                      'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
-                      isSelected ? 'bg-black/15 text-black' : 'bg-white/10 text-zinc-400'
-                    )}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+              return (
+                <button
+                  key={tg.id}
+                  onClick={() => handleSelectTier(tg.id)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border shadow-sm shrink-0',
+                    isSelected
+                      ? 'bg-white text-black border-white font-bold shadow-md'
+                      : 'bg-zinc-900/60 text-zinc-400 border-white/5 hover:text-white hover:bg-zinc-800'
+                  )}
+                >
+                  {tg.iconType !== 'all' && renderTierIcon(tg.iconType)}
+                  <span>{tg.shortLabel}</span>
+                  <span className={cn(
+                    'text-[10px] px-1.5 py-0.2 rounded-full font-bold',
+                    isSelected ? 'bg-black/15 text-black' : 'bg-white/10 text-zinc-400'
+                  )}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search & Sort Controls (Compact Side-by-Side on Mobile) */}
+          <div className="flex items-center gap-2">
+            {/* Search input */}
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari video di server..."
+                className="w-full h-8 sm:h-9 pl-7 pr-6 rounded-full bg-zinc-900/80 hover:bg-zinc-900 focus:bg-zinc-900 border border-white/10 focus:border-cyan-500/50 text-xs text-white placeholder-zinc-500 focus:outline-none transition-all"
+              />
+              <svg className="w-3.5 h-3.5 absolute left-2.5 top-2.5 sm:top-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-2 sm:top-2.5 text-zinc-500 hover:text-white text-xs"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            {/* Search & Sort Controls */}
-            <div className="flex items-center gap-3 shrink-0">
-              {/* Search input */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari video di server..."
-                  className="h-9 pl-8 pr-7 rounded-full bg-zinc-900/80 hover:bg-zinc-900 focus:bg-zinc-900 border border-white/10 focus:border-cyan-500/50 text-xs text-white placeholder-zinc-500 focus:outline-none transition-all w-44 sm:w-56"
-                />
-                <svg className="w-3.5 h-3.5 absolute left-3 top-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-2.5 text-zinc-500 hover:text-white text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              {/* Sort Selector */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="h-9 px-3.5 rounded-full bg-zinc-900/80 hover:bg-zinc-900 border border-white/10 text-xs text-zinc-300 focus:outline-none cursor-pointer"
-              >
-                <option value="trending" className="bg-zinc-900">🔥 Trending</option>
-                <option value="popular" className="bg-zinc-900">⭐ Rating Tertinggi</option>
-                <option value="new" className="bg-zinc-900">✨ Terbaru</option>
-                <option value="duration" className="bg-zinc-900">⏳ Durasi Terpanjang</option>
-              </select>
-            </div>
+            {/* Sort Selector */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="h-8 sm:h-9 px-2.5 sm:px-3.5 rounded-full bg-zinc-900/80 hover:bg-zinc-900 border border-white/10 text-xs text-zinc-300 focus:outline-none cursor-pointer shrink-0"
+            >
+              <option value="trending" className="bg-zinc-900">🔥 Trending</option>
+              <option value="popular" className="bg-zinc-900">⭐ Rating</option>
+              <option value="new" className="bg-zinc-900">✨ Terbaru</option>
+              <option value="duration" className="bg-zinc-900">⏳ Durasi</option>
+            </select>
           </div>
 
           {/* Seamless Horizontal Category Tags */}
           {availableCategories.length > 0 && (
-            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-2 scrollbar-none">
-              <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap shrink-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5 pb-1 scrollbar-none -mx-1 px-1">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider whitespace-nowrap shrink-0 pr-1">
                 Kategori:
               </span>
 
               <button
                 onClick={() => handleSelectGenre('all')}
                 className={cn(
-                  'px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer',
+                  'px-2.5 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shrink-0',
                   activeGenre === 'all'
                     ? 'bg-brand text-white'
                     : 'text-zinc-400 hover:text-white hover:bg-white/5'
                 )}
               >
-                Semua Kategori
+                Semua
               </button>
 
               {availableCategories.map((catName) => {
@@ -377,7 +365,7 @@ export default function PrivateServer() {
                     key={catName}
                     onClick={() => handleSelectGenre(catName)}
                     className={cn(
-                      'px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer',
+                      'px-2.5 py-0.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0',
                       isCatSelected
                         ? 'bg-brand text-white font-bold'
                         : 'text-zinc-400 hover:text-white hover:bg-white/5'
@@ -392,11 +380,11 @@ export default function PrivateServer() {
         </div>
 
         {/* Video Grid Presentation */}
-        <div className="pt-2">
+        <div className="pt-1">
           {filteredMovies.length === 0 ? (
             <EmptyState
               icon="🎬"
-              message={`Belum ada video pada node ${currentTierGroup.label} dengan filter kategori "${activeGenre}".`}
+              message={`Belum ada video pada kategori "${activeGenre}".`}
               action={
                 <button
                   onClick={() => {
@@ -412,42 +400,41 @@ export default function PrivateServer() {
               }
             />
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* Paginated 20 Video Grid */}
               <MovieGrid movies={paginatedMovies} />
 
               {/* Numbered Pagination Slide (1, 2, 3, 4, ...) */}
               {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/5">
-                  <p className="text-xs text-zinc-400 font-mono">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 sm:pt-6 border-t border-white/5">
+                  <p className="text-[11px] sm:text-xs text-zinc-400 font-mono text-center sm:text-left">
                     Menampilkan <strong className="text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredMovies.length)}</strong> dari <strong className="text-white">{filteredMovies.length}</strong> total video
                   </p>
 
-                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-center">
                     {/* Previous Button */}
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 border border-white/10 text-zinc-300 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                      className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold bg-zinc-900 border border-white/10 text-zinc-300 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
-                      ‹ Sebelumnya
+                      ‹
                     </button>
 
                     {/* Page Numbers */}
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
                       const isActive = pageNum === currentPage;
-                      // Show first, last, and pages around current
                       if (
                         pageNum === 1 ||
                         pageNum === totalPages ||
-                        (pageNum >= currentPage - 2 && pageNum <= currentPage + 2)
+                        (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
                       ) {
                         return (
                           <button
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
                             className={cn(
-                              'h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer border',
+                              'h-7 sm:h-8 min-w-[28px] sm:min-w-[32px] px-1.5 sm:px-2 rounded-lg text-xs font-bold font-mono transition-all cursor-pointer border',
                               isActive
                                 ? 'bg-brand text-white border-brand shadow-lg scale-105'
                                 : 'bg-zinc-900/80 text-zinc-400 border-white/5 hover:text-white hover:bg-zinc-800'
@@ -458,12 +445,12 @@ export default function PrivateServer() {
                         );
                       }
                       if (
-                        (pageNum === currentPage - 3 && pageNum > 1) ||
-                        (pageNum === currentPage + 3 && pageNum < totalPages)
+                        (pageNum === currentPage - 2 && pageNum > 1) ||
+                        (pageNum === currentPage + 2 && pageNum < totalPages)
                       ) {
                         return (
-                          <span key={pageNum} className="px-1 text-zinc-600 font-mono text-xs">
-                            ...
+                          <span key={pageNum} className="px-0.5 text-zinc-600 font-mono text-[10px]">
+                            ..
                           </span>
                         );
                       }
@@ -474,9 +461,9 @@ export default function PrivateServer() {
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 border border-white/10 text-zinc-300 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+                      className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold bg-zinc-900 border border-white/10 text-zinc-300 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
-                      Berikutnya ›
+                      ›
                     </button>
                   </div>
                 </div>

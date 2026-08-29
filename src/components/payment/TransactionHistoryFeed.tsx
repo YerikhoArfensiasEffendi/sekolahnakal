@@ -59,20 +59,28 @@ export function TransactionHistoryFeed({ limit = 12, showTitle = true, className
   const displayList = limit ? payments.slice(0, limit) : payments;
 
   return (
-    <section className={`rounded-xl border border-white/10 bg-[#0c0a12] p-5 sm:p-6 shadow-xl ${className}`}>
+    <section className={`rounded-xl border border-white/10 bg-[#0c0a12] p-3.5 sm:p-5 shadow-xl ${className}`}>
       {showTitle && (
-        <div className="pb-3 mb-4 border-b border-white/10">
-          <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-            Riwayat Transaksi
-          </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Daftar pembelian akses member VIP, VVIP, dan Talent terbaru.
-          </p>
+        <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-white/10">
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Riwayat Transaksi</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Live
+              </span>
+            </h2>
+            <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
+              Pembelian akses member VIP, VVIP, dan Talent terbaru.
+            </p>
+          </div>
+          <div className="sm:hidden text-[10px] font-medium text-zinc-500">
+            Geser ›
+          </div>
         </div>
       )}
 
-      {/* Grid of Sharp Tegas Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {/* Responsive Layout: Horizontal Swipe on Mobile (< sm), Grid on Tablet/Desktop (>= sm) */}
+      <div className="flex sm:grid overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-1 sm:pb-0 scrollbar-none -mx-1 px-1 sm:mx-0 sm:px-0">
         {displayList.map((item) => {
           const lowerTier = item.purchasedAccess.toLowerCase();
           const isVvip = lowerTier.includes('vvip');
@@ -81,12 +89,12 @@ export function TransactionHistoryFeed({ limit = 12, showTitle = true, className
           return (
             <div
               key={item.id || item.orderId}
-              className="p-3.5 rounded-lg bg-[#110e1a] hover:bg-[#171324] border border-white/10 hover:border-white/20 transition-colors shadow-sm flex flex-col justify-between space-y-2.5"
+              className="min-w-[240px] max-w-[260px] sm:min-w-0 sm:max-w-none shrink-0 snap-start p-3 rounded-lg bg-[#110e1a] hover:bg-[#171324] border border-white/10 hover:border-white/20 transition-colors shadow-sm flex flex-col justify-between space-y-2"
             >
               {/* Header: Member Avatar & Username */}
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-7 w-7 rounded-md overflow-hidden bg-black border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-md overflow-hidden bg-black border border-white/10 shrink-0 flex items-center justify-center shadow-inner">
                     {item.avatarUrl ? (
                       <img src={item.avatarUrl} alt={item.username} className="h-full w-full object-cover" />
                     ) : (
@@ -103,15 +111,15 @@ export function TransactionHistoryFeed({ limit = 12, showTitle = true, className
                   </div>
                 </div>
 
-                <span className="h-4.5 w-4.5 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                  <IconCheck className="w-2.5 h-2.5" />
+                <span className="h-4 w-4 rounded bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <IconCheck className="w-2 h-2" />
                 </span>
               </div>
 
               {/* Tier Access Badge & Price */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+              <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/5">
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
                     isVvip
                       ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
                       : isTalent
@@ -120,7 +128,7 @@ export function TransactionHistoryFeed({ limit = 12, showTitle = true, className
                   }`}
                 >
                   {isVvip ? <IconCrown className="w-2.5 h-2.5" /> : isTalent ? <IconDiamond className="w-2.5 h-2.5" /> : <IconStar className="w-2.5 h-2.5" />}
-                  <span>{item.purchasedAccess}</span>
+                  <span className="truncate max-w-[90px]">{item.purchasedAccess}</span>
                 </span>
 
                 <span className="text-xs font-bold font-mono text-emerald-400">
@@ -129,8 +137,8 @@ export function TransactionHistoryFeed({ limit = 12, showTitle = true, className
               </div>
 
               {/* Timestamp footer */}
-              <div className="text-[9px] text-zinc-500 font-mono text-right pt-0.5">
-                {item.timestamp ? new Date(item.timestamp * 1000).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : item.createdAt}
+              <div className="text-[9px] text-zinc-500 font-mono text-right">
+                {item.timestamp ? new Date(item.timestamp * 1000).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : item.createdAt}
               </div>
             </div>
           );
