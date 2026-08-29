@@ -20,35 +20,46 @@ const LULUSTREAM_KEY_STORAGE = 'sn_lulustream_api_key';
 const ZEROSTORAGE_KEY_STORAGE = 'sn_zerostorage_api_key';
 const STORAGE_PREF_KEY = 'sn_storage_provider_pref'; // 'zerostorage' | 'lulustream' | 'local'
 
+let inMemoryMovies: Movie[] = [];
+let hasInitialSynced = false;
+let isSyncingPromise: Promise<Movie[]> | null = null;
+
+function normalizeMovieItem(m: any): Movie {
+  const cleanRating = (m.rating === 8.0 || m.rating === 9.6 || m.rating === 8) ? 0 : (m.rating || 0);
+  const rawGenres = Array.isArray(m.genres) && m.genres.length > 0
+    ? m.genres
+    : (m.category ? [m.category] : (Array.isArray(m.tags) && m.tags.length > 0 ? [m.tags[0]] : ['Tidur']));
+  const cleanGenres = rawGenres.filter(
+    (g: string) => typeof g === 'string' && g.toLowerCase().trim() !== 'romance & sensual'
+  );
+  const poster = m.posterUrl || m.poster || '/images/logo_v2.png';
+  const backdrop = m.backdropUrl || m.banner || poster;
+  const overview = m.overview || m.description || '';
+  const durationMin = typeof m.duration === 'number' && m.duration > 400 ? Math.max(1, Math.round(m.duration / 60)) : (m.duration || 60);
+
+  return {
+    ...m,
+    posterUrl: poster,
+    backdropUrl: backdrop,
+    overview: overview,
+    duration: durationMin,
+    rating: cleanRating,
+    genres: cleanGenres.length > 0 ? cleanGenres : ['Tidur'],
+  };
+}
+
 export function getStoredMovies(): Movie[] {
+  if (inMemoryMovies.length > 0) {
+    return inMemoryMovies;
+  }
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map((m) => {
-          const cleanRating = (m.rating === 8.0 || m.rating === 9.6 || m.rating === 8) ? 0 : (m.rating || 0);
-          const rawGenres = Array.isArray(m.genres) && m.genres.length > 0
-            ? m.genres
-            : (m.category ? [m.category] : (Array.isArray(m.tags) && m.tags.length > 0 ? [m.tags[0]] : ['Tidur']));
-          const cleanGenres = rawGenres.filter(
-            (g: string) => typeof g === 'string' && g.toLowerCase().trim() !== 'romance & sensual'
-          );
-          const poster = m.posterUrl || m.poster || '/images/logo_v2.png';
-          const backdrop = m.backdropUrl || m.banner || poster;
-          const overview = m.overview || m.description || '';
-          const durationMin = typeof m.duration === 'number' && m.duration > 400 ? Math.max(1, Math.round(m.duration / 60)) : (m.duration || 60);
-
-          return {
-            ...m,
-            posterUrl: poster,
-            backdropUrl: backdrop,
-            overview: overview,
-            duration: durationMin,
-            rating: cleanRating,
-            genres: cleanGenres.length > 0 ? cleanGenres : ['Tidur'],
-          };
-        });
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        inMemoryMovies = parsed.map(normalizeMovieItem);
+        return inMemoryMovies;
       }
     }
   } catch {
@@ -59,23 +70,27 @@ export function getStoredMovies(): Movie[] {
 }
 
 function saveLocalMovies(movies: Movie[], broadcast: boolean = true): void {
+  const normalized = movies.map(normalizeMovieItem);
+  inMemoryMovies = normalized;
+
   try {
-    const serialized = JSON.stringify(movies);
+    const serialized = JSON.stringify(normalized);
     const existing = localStorage.getItem(STORAGE_KEY);
     if (existing === serialized) {
-      return; // Tidak ada perubahan, jangan picu loop re-render
+      return;
     }
     localStorage.setItem(STORAGE_KEY, serialized);
-    if (broadcast && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(EVENT_NAME));
-    }
   } catch {
-    // ignore
+    // localStorage quota exceeded fallback: clear old bloated key
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+  }
+
+  if (broadcast && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(EVENT_NAME));
   }
 }
-
-let hasInitialSynced = false;
-let isSyncingPromise: Promise<Movie[]> | null = null;
 
 export async function syncMoviesFromServer(): Promise<Movie[]> {
   if (isSyncingPromise) return isSyncingPromise;
@@ -90,10 +105,10 @@ export async function syncMoviesFromServer(): Promise<Movie[]> {
         },
       });
       if (res.ok) {
-        const serverMovies: Movie[] = await res.json();
+        const serverMovies = await res.json();
         if (Array.isArray(serverMovies)) {
           saveLocalMovies(serverMovies);
-          return serverMovies;
+          return inMemoryMovies;
         }
       }
     } catch {
