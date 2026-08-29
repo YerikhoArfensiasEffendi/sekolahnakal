@@ -247,7 +247,22 @@ def main():
                 except Exception:
                     pass
 
-                # 3. Upload to ZeroStorage
+                # 3. Optimasi Web Streaming (+faststart moov atom ke awal file)
+                tmp_fast_path = os.path.join(temp_dir, f"fast_{msg_id}.mp4")
+                try:
+                    cmd_fast = [
+                        "ffmpeg", "-y", "-i", tmp_vid_path,
+                        "-c", "copy", "-movflags", "+faststart",
+                        tmp_fast_path
+                    ]
+                    subprocess.run(cmd_fast, capture_output=True, timeout=25)
+                    if os.path.exists(tmp_fast_path) and os.path.getsize(tmp_fast_path) > 1000:
+                        os.replace(tmp_fast_path, tmp_vid_path)
+                        log(f"    ⚡ Video dioptimalkan dengan FastStart (Buffer instan).")
+                except Exception as e:
+                    log(f"    ⚠️ Faststart note: {e}")
+
+                # 4. Upload to ZeroStorage
                 log("    ☁️ Mengunggah ke ZeroStorage CDN...")
                 up_res = upload_to_zerostorage(tmp_vid_path, title)
 

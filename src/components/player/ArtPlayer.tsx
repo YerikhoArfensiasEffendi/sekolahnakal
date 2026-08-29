@@ -154,7 +154,7 @@ export function ArtPlayerComponent({ movieId, streamingData, className, onReady 
       contextmenu: [],
       moreVideoAttr: {
         playsInline: true,
-        preload: 'metadata',
+        preload: 'auto',
         controlsList: 'nodownload noplaybackrate noremoteplayback',
         disablePictureInPicture: true,
         oncontextmenu: 'return false;',
