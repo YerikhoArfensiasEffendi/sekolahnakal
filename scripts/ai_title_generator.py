@@ -2,89 +2,131 @@
 # -*- coding: utf-8 -*-
 """
 AI Title Generator & Humanizer Copywriting Engine (Sekolah Nakal)
-Format: Super casual, bahasa slang anak muda/tongkrongan, natural, dan menggoda.
-Tanpa awalan kurung [Lokal] dan tanpa kata 'Edisi'.
+Format: 100% Real Human-like Casual Typing.
+Variasi panjang-pendek acak (1 kata - 8 kata), gaya santai, bahasa slang anak muda, tidak kaku/baku.
 """
 
 import re
 import hashlib
 import random
 
-# Slang & Humanized Keyword Pools per Category
-
-LOKAL_SUBJECTS = [
-    "Di Gas Sama Temen", "Di Ewe Om Girang", "Colmek Basah di Kamar",
-    "Pasangan Kosan Jaksel", "Bocil Tobrut Main", "Di Ewe Pacar Pas Rumah Sepi",
-    "Kepergok Wikwik di Kamar", "Di Genjot Sampe Lemes", "VCS Colmek Mendesah",
-    "Main Kasar Sampe Basah", "Jilbab Mesum Di Gas", "Temen Sekamar Minta Jatah",
-    "Di Goyang Pasangan Sampe Puas", "Selebgram Tobrut Pamer Bodi", "Koleksi Pribadi Wikwik",
-    "Bikin Video Pas Mau Tidur", "Gadis Hijab Mendesah di Kamar", "Skandal Mahasiswi Bandung",
-    "Cewek Sma Pasrah Di Ewe", "Di Ewe di Mobil Goyang", "Main Belakang Sampe Keenakan",
-    "Colmek Pake Timun di Kasur", "Gadis Manja Minta di Gas", "Janda Muda Minta Jatah Malam",
-    "Wikwik Panas Pas Hujan", "Di Ewe Tetangga Kosan", "Cewek Tobrut Goyang Desah",
-    "Pasangan Sma Colong Waktu di Kosan", "Di Genjot di Kamar Mandi", "Mandi Basah Sambil Main Jari",
-    "Cewek Kuliahan Pasrah di Gas", "Di Ewe Bos di Ruang Kerja", "Koleksi Pribadi Cewek Cosplay"
+# ==========================================
+# 1. POOL JUDUL PENDEK (1 - 3 KATA) ~ 35%
+# ==========================================
+SHORT_LOKAL = [
+    "colmek basah", "Tobrut jaksel", "di gas temen", "skandal hotel", "hijab mesum",
+    "pasrah di ewe", "main di kosan", "bocil tobrut", "desah parah", "di mobil goyang",
+    "VCS colmek", "mandi bareng", "enak banget", "Tobrut indo", "janda muda",
+    "main kasar", "wikwik kosan", "abg viral", "minta jatah", "sampe lemes",
+    "colmek timun", "di ewe om", "cewek SMA", "goyang desah", "becek parah",
+    "main belakang", "kepergok wikwik", "cewek kosan", "desahan renyah", "pamer tobrut",
+    "gadis desa", "baju tidur tipis", "sange berat", "desah keenakan", "mandi basah"
 ]
 
-LOKAL_CONTEXTS = [
-    "di Kasur Empuk", "Pas Rumah Kosong", "Sampe Lemes", "Sampe Becek Parah",
-    "Malam Minggu", "di Kamar Mandi", "di Hotel Melati", "di Villa Puncak",
-    "Bikin Nafsu", "Desahannya Nagih", "Goyangannya Liar", "Keenakan Parah",
-    "di Apartemen Mewah", "Tanpa Sensor", "Muka Pasrah", "Sambil Direkam",
-    "di Mobil Parkiran", "Sampe Nangis Nikmat", "Minta Nambah Terus", "Bikin Otong Tegang"
+SHORT_JEPANG = [
+    "cosplay tobrut", "tante jepang", "pijat plus", "cewek jepang", "ABG jepang",
+    "cosplay bunny", "di ewe di hotel", "onsen bareng", "pasrah di ranjang", "suster tobrut",
+    "maid jepang", "desah jepang", "shibuya girl", "guru jepang", "kepergok di kelas"
 ]
 
-JEPANG_SUBJECTS = [
-    "Cosplay Cewek Jepang Di Genjot", "Pijat Plus Plus Sensual Tokyo", "Cewek Jepang Pasrah Di Ewe",
-    "Cosplay Bunny Tobrut Mendesah", "Main Bertiga Sama Cewek Jepang", "Cewek Abg Jepang Kepergok",
-    "Tante Jepang Minta Di Puasin", "Idol Jepang Wikwik di Studio", "Pelayan Maid Jepang Di Ewe",
-    "Cewek Shibuya Di Gas di Hotel", "Suster Cantik Jepang Main di Klinik", "Guru Jepang Pasrah Sama Murid",
-    "Mandi Air Panas Ryokan Bareng Tante", "Cewek Jepang Mabuk Pasrah Di Ewe", "Cosplay Anime Tobrut Di Genjot"
+SHORT_BARAT = [
+    "bule montok", "cewek latin", "model onlyfans", "bule pirang", "main di penthouse",
+    "di kolam renang", "bule tobrut", "miami beach", "gaya liar", "bule pasrah",
+    "photoshoot nakal", "bule sange", "cewek spanyol", "latin goyang"
 ]
 
-JEPANG_CONTEXTS = [
-    "Sampe Kejang", "di Kamar Hotel Tokyo", "Desahan Renyah Banget", "Sampe Muncrat",
-    "di Pemandian Air Panas", "Gaya Kucing Manja", "Pasrah di Ranjang", "Muka Sange Parah",
-    "di Ruang Rahasia", "Full HD Tanpa Sensor", "Sampe Lemes Tak Berdaya", "Nikmat Maksimal"
+SHORT_CHINA = [
+    "cindo mulus", "model cindo", "cewek douyin", "streamer cindo", "cindo tobrut",
+    "apartemen mewah", "cindo pasrah", "cindo mabuk", "kulit mulus", "shanghai beauty"
 ]
 
-BARAT_SUBJECTS = [
-    "Bule Montok Di Gas di Ranjang", "Cewek Latin Mendesah di Kamar", "Photoshoot Model Bule Di Ewe",
-    "Bule Pirang Main Kasar di Penthouse", "Di Gas Abis Abisan Bareng Bule", "Model Onlyfans Barat Wikwik",
-    "Bule Tobrut Di Genjot di Kolam", "Cewek Spanyol Liar di Kasur", "Bule Abg Pasrah Di Ewe",
-    "Sesi Panas Bule Montok di Hotel", "Tante Bule Pirang Minta Di Puasin", "Model Miami Beach Di Gas"
+SHORT_TALENT = [
+    "talent tobrut", "staycation bali", "villa privat", "bareng talent", "momen intim",
+    "dinner berlanjut", "di ewe di villa", "talent pasrah", "VIP session", "talent viral"
 ]
 
-BARAT_CONTEXTS = [
-    "Sampe Becek Parah", "di Penthouse Mewah", "Suara Desah Kenceng", "Gaya Liar Banget",
-    "di Balkon Hotel", "Sampe Teriak Nikmat", "Puas Banget", "Full Sensual Session",
-    "di Pinggir Pantai", "Nikmat Parah", "Gaya Nungging Mantap"
+# ==========================================
+# 2. POOL JUDUL SEDANG (4 - 6 KATA) ~ 45%
+# ==========================================
+MEDIUM_LOKAL = [
+    "di gas temen pas rumah sepi", "cewek kosan minta jatah malam", "skandal mahasiswi bandung hotel melati",
+    "bocil tobrut main di kamar", "kepergok wikwik pas ujan deras", "VCS colmek mendesah keenakan",
+    "gadis manis pasrah di genjot", "main belakang sampe lemes parah", "colmek di kamar mandi basah",
+    "di ewe pacar pas mau tidur", "jilbab tobrut di gas di mobil", "selebgram tobrut pamer bodi di kasur",
+    "pasangan SMA colong waktu di kosan", "di ewe tetangga kosan sampe becek", "cewek tobrut goyang desah liar",
+    "mandi basah sambil mainin jari", "cewek kuliahan pasrah di gas om", "di ewe bos di ruang kerja",
+    "koleksi pribadi cewek cosplay tobrut", "wikwik panas berdua di kasur", "janda muda minta jatah malam jumat",
+    "gadis hijab mesum main di mobil", "pasangan kosan jaksel malam minggu", "bikin video pas lagi sange",
+    "colmek pake timun di ranjang", "gadis manja minta di gas abis", "di goyang pacar sampe lemes",
+    "kepergok mesum di toilet sekolah", "rekaman kamar tidur cewek cantik", "aksi nakal pasangan kekasih di villa"
 ]
 
-CHINA_SUBJECTS = [
-    "Cewek Cindo Tobrut Main di Apartemen", "Model Cindo Di Ewe di Hotel", "Cewek Douyin Pasrah Di Gas",
-    "Streamer Cindo Colmek Depan Kamera", "Cewek Cindo Baju Hanfu Di Ewe", "Cewek Cantik Shanghai Wikwik",
-    "Cindo Mulus Pasrah Di Genjot", "Selebgram Cantik China Main di Kasur", "Cewek Cindo Mabuk di Club"
+MEDIUM_JEPANG = [
+    "cosplay cewek jepang di genjot hotel", "pijat plus plus sensual tokyo", "cewek jepang pasrah di ewe",
+    "cosplay bunny tobrut mendesah pasrah", "main bertiga bareng cewek jepang", "cewek ABG jepang kepergok mesum",
+    "tante jepang minta di puasin berondong", "idol jepang wikwik di studio foto", "pelayan maid jepang di ewe",
+    "cewek shibuya di gas di hotel", "suster cantik jepang main di klinik", "mandi air panas ryokan bareng tante"
 ]
 
-CHINA_CONTEXTS = [
-    "Sampe Lemes", "di Apartemen Mewah", "Kulit Mulus Bodi Gitar", "Desahan Manja",
-    "di Kamar Suite", "Bikin Meleleh", "Gaya Manja Bikin Sange", "Tanpa Sensor"
+MEDIUM_BARAT = [
+    "bule montok di gas di ranjang", "cewek latin mendesah di kamar hotel", "photoshoot model bule di ewe",
+    "bule pirang main kasar di penthouse", "di gas abis abisan bareng bule", "model onlyfans barat wikwik liar",
+    "bule tobrut di genjot di kolam", "cewek spanyol liar di atas kasur", "sesi panas bule montok di hotel"
 ]
 
-TALENT_SUBJECTS = [
-    "Staycation Bareng Talent Di Gas Sampe Pagi", "Private Date Villa Bali Di Ewe",
-    "Talent Cantik Minta Di Manjain di Kasur", "Wikwik Romantis Bareng Talent Populer",
-    "Sesi Privat Suite Hotel Bareng Talent", "Talent Verified Pasrah Di Genjot",
-    "Liburan Dewata Wikwik Bareng Talent", "Dinner Berlanjut Di Ewe di Hotel", "Momen Intim Bareng Talent Tobrut"
+MEDIUM_CHINA = [
+    "cewek cindo tobrut main di apartemen", "model cindo di ewe di hotel", "cewek douyin pasrah di gas pacar",
+    "streamer cindo colmek depan kamera", "cewek cindo baju hanfu di ewe", "cindo mulus pasrah di genjot abis"
 ]
 
-TALENT_CONTEXTS = [
-    "di Villa Seminyak", "Sampe Puas Banget", "Suasana Remang Romantis", "Desahan Manja Nagih",
-    "di Kamar Bintang Lima", "VIP Private Session", "Sampe Lemes Bareng", "Momen Paling Nikmat"
+MEDIUM_TALENT = [
+    "staycation bareng talent di gas pagi", "private date villa bali di ewe", "talent cantik minta dimanjain di kasur",
+    "wikwik romantis bareng talent populer", "sesi privat suite hotel bareng talent", "talent verified pasrah di genjot"
 ]
 
-# Slang Humanizer Overview Templates
+# ==========================================
+# 3. POOL JUDUL PANJANG (7 - 9 KATA) ~ 20%
+# ==========================================
+LONG_LOKAL = [
+    "pasangan SMA kepergok wikwik di kosan temen sampe lemes",
+    "cewek jilbab tobrut pasrah di gas om girang di hotel bintang",
+    "rekaman pribadi selebgram viral main kasar di apartemen jaksel",
+    "momen intim berdua di kamar hotel remang remang desah parah",
+    "koleksi pribadi cewek tobrut lagi asik colmek sendiri di kasur",
+    "pasangan kosan jaksel main liar pas rumah lagi sepi banget",
+    "gadis manis baju tidur tipis pasrah di genjot sampe nangis nikmat",
+    "di ewe tetangga kosan pas malam minggu goyangannya bikin nagih",
+    "aksi nakal cewek kuliahan minta jatah di kamar tidur apartemen",
+    "skandal panas asisten pribadi kantor di ewe bos sampe basah"
+]
+
+LONG_JEPANG = [
+    "cosplay anime tobrut di genjot di kamar hotel tokyo sampe kejang",
+    "cewek jepang mabuk pasrah di ewe temen kantor di ruang karaoke",
+    "tante jepang montok minta di puasin berondong di pemandian air panas"
+]
+
+LONG_BARAT = [
+    "model bule pirang main kasar di penthouse mewah desah kenceng banget",
+    "cewek latin tobrut di gas abis abisan di pinggir pantai miami",
+    "photoshoot model onlyfans barat berlanjut wikwik liar di kamar hotel"
+]
+
+LONG_CHINA = [
+    "cewek cindo tobrut pasrah di gas pacar di apartemen mewah jakarta",
+    "model cindo mulus di ewe di kamar hotel suite suasana remang",
+    "streamer douyin cindo colmek basah live depan kamera kamar tidur"
+]
+
+LONG_TALENT = [
+    "staycation eksklusif bareng talent verified di villa seminyak bali di gas",
+    "private room stay bareng talent tobrut di ewe sampe lemes bareng",
+    "liburan pulau dewata wikwik romantis bareng talent populer di hotel mewah"
+]
+
+# ==========================================
+# OVERVIEWS (CASUAL & NATURAL)
+# ==========================================
 OVERVIEW_TEMPLATES = [
     "Rekaman pribadi pas lagi asik main di kasur, desahannya renyah banget bikin sange parah.",
     "Di gas abis-abisan pas rumah lagi sepi, goyangan mantap sampe basah kuyup dan lemes.",
@@ -95,23 +137,23 @@ OVERVIEW_TEMPLATES = [
     "Cewek manja minta digenjot abis-abisan, pasrah nungging sampe lemes tak berdaya.",
     "Kepergok main belakang pas lagi berduaan, aksi liar penuh gairah wajib ditonton.",
     "Video pribadi super mulus no sensor, goyangan pinggulnya bikin langsung crot.",
-    "Aksi nakal pas lagi kangen berat, main berduaan di kamar sampe sprei basah kuyup."
+    "Aksi nakal pas lagi kangen berat, main berduaan di kamar sampe sprei basah kuyup.",
+    "Ceweknya pasrah banget minta digenjot terus, ekspresinya bener-bener nikmat.",
+    "Gaya nunggingnya mantap pol, suara desahannya kedengeran jelas bikin horni."
 ]
 
 
 def is_garbage_or_random_title(title: str) -> bool:
-    """Mendeteksi secara ketat apakah judul saat ini adalah nama file acak, hash, atau format mentah."""
+    """Mendeteksi apakah judul saat ini adalah nama file acak, hash, atau format mentah."""
     if not title:
         return True
     
     t = title.strip()
     t_lower = t.lower()
     
-    # Too short
     if len(t_lower) < 4:
         return True
         
-    # Check common raw prefixes or tokens
     raw_tokens = [
         "vid", "video", "screen recording", "screenrecording", "screen_recording", "recording",
         "rec_", "mov_", "trim_", "img", "image", "snapvideo", "snap_", "whatsapp",
@@ -122,25 +164,20 @@ def is_garbage_or_random_title(title: str) -> bool:
         if t_lower.startswith(p) or f" {p}" in t_lower:
             return True
             
-    # Check if contains extension words
     if any(ext in t_lower for ext in ["mp4", "mkv", "avi", "mov", "3gp", "webm"]):
         return True
 
-    # Check if purely digits or contains long sequence of digits (> 6 consecutive numbers)
     if re.search(r'\d{6,}', t_lower):
         return True
         
-    # Check ratio of digits to letters
     digits_count = sum(c.isdigit() for c in t_lower)
     letters_count = sum(c.isalpha() for c in t_lower)
     if digits_count > 0 and (digits_count >= letters_count or digits_count >= 5):
         return True
 
-    # Check hex / UUID / hash patterns
     if re.search(r'[0-9a-f]{6,}', t_lower):
         return True
 
-    # Check words that have numbers inside them
     words = re.split(r'[\s_.-]+', t_lower)
     for w in words:
         if len(w) >= 5 and re.search(r'[a-z]', w) and re.search(r'\d', w):
@@ -148,7 +185,6 @@ def is_garbage_or_random_title(title: str) -> bool:
         if len(w) >= 7 and not re.search(r'[aeiou]', w):
             return True
 
-    # Check single or double word that is too long
     if len(words) == 1 and len(words[0]) >= 10:
         return True
     if len(words) <= 2 and any(len(w) >= 14 for w in words):
@@ -158,7 +194,7 @@ def is_garbage_or_random_title(title: str) -> bool:
 
 
 def clean_discord_caption(caption: str) -> str:
-    """Membersihkan teks caption pesan Discord menjadi judul Title Case santai."""
+    """Membersihkan teks caption pesan Discord menjadi judul santai natural."""
     if not caption:
         return ""
     
@@ -173,44 +209,96 @@ def clean_discord_caption(caption: str) -> str:
     cleaned = re.sub(r'[^\w\s]', '', cleaned).strip()
     
     if len(cleaned) >= 5 and not is_garbage_or_random_title(cleaned):
-        words = [w.capitalize() for w in cleaned.split()]
+        words = cleaned.split()
         return " ".join(words[:8])
         
     return ""
 
 
-def generate_thematic_title(category: str, tier: str, seed_id: str) -> str:
-    """Menghasilkan judul casual slang anak muda berdasarkan tema kategori."""
+def apply_human_casing(text: str, seed_int: int) -> str:
+    """Menerapkan gaya ketikan manusia santai: Sentence case, lowercase, atau Title case kasual."""
+    rng = random.Random(seed_int + 77)
+    style_choice = rng.random()
+    
+    words = text.split()
+    if not words:
+        return text
+
+    if style_choice < 0.40:
+        # Sentence case (Huruf pertama kapital, sisanya santai)
+        return text[0].upper() + text[1:]
+    elif style_choice < 0.70:
+        # Casual Mixed (Kapital kata penting / singkatan seperti SMA, VCS, ABG, VIP)
+        capitalized = []
+        for w in words:
+            if w.upper() in ["SMA", "VCS", "ABG", "VIP", "HD", "JAP"]:
+                capitalized.append(w.upper())
+            else:
+                capitalized.append(w.capitalize())
+        return " ".join(capitalized)
+    else:
+        # Super casual lowercase look (e.g. "colmek basah di kamar")
+        return text.lower()
+
+
+def generate_mixed_title(category: str, tier: str, seed_id: str) -> str:
+    """
+    Menghasilkan judul yang benar-benar campur (panjang, sedang, pendek)
+    dengan distribusi natural:
+    - 35% Pendek (1-3 kata)
+    - 45% Sedang (4-6 kata)
+    - 20% Panjang (7-9 kata)
+    """
     cat_lower = (category or "").lower()
     tier_lower = (tier or "").lower()
     
     seed_int = int(hashlib.md5(str(seed_id).encode("utf-8")).hexdigest(), 16)
     rng = random.Random(seed_int)
     
+    # Pilih panjang secara dinamis
+    length_dice = rng.random()
+    
     if "jepang" in cat_lower or "jav" in cat_lower or "cosplay" in cat_lower:
-        subj = rng.choice(JEPANG_SUBJECTS)
-        ctx = rng.choice(JEPANG_CONTEXTS)
-        return f"{subj} {ctx}"
-        
+        if length_dice < 0.35:
+            raw = rng.choice(SHORT_JEPANG)
+        elif length_dice < 0.80:
+            raw = rng.choice(MEDIUM_JEPANG)
+        else:
+            raw = rng.choice(LONG_JEPANG)
+            
     elif "barat" in cat_lower or "bule" in cat_lower or "western" in cat_lower or "latin" in cat_lower:
-        subj = rng.choice(BARAT_SUBJECTS)
-        ctx = rng.choice(BARAT_CONTEXTS)
-        return f"{subj} {ctx}"
-        
+        if length_dice < 0.35:
+            raw = rng.choice(SHORT_BARAT)
+        elif length_dice < 0.80:
+            raw = rng.choice(MEDIUM_BARAT)
+        else:
+            raw = rng.choice(LONG_BARAT)
+            
     elif "china" in cat_lower or "mandarin" in cat_lower or "asia" in cat_lower:
-        subj = rng.choice(CHINA_SUBJECTS)
-        ctx = rng.choice(CHINA_CONTEXTS)
-        return f"{subj} {ctx}"
-        
+        if length_dice < 0.35:
+            raw = rng.choice(SHORT_CHINA)
+        elif length_dice < 0.80:
+            raw = rng.choice(MEDIUM_CHINA)
+        else:
+            raw = rng.choice(LONG_CHINA)
+            
     elif "talent" in cat_lower or tier_lower == "talent":
-        subj = rng.choice(TALENT_SUBJECTS)
-        ctx = rng.choice(TALENT_CONTEXTS)
-        return f"{subj} {ctx}"
-        
+        if length_dice < 0.35:
+            raw = rng.choice(SHORT_TALENT)
+        elif length_dice < 0.80:
+            raw = rng.choice(MEDIUM_TALENT)
+        else:
+            raw = rng.choice(LONG_TALENT)
+            
     else:  # Default to Media Lokal / Koleksi Pribadi
-        subj = rng.choice(LOKAL_SUBJECTS)
-        ctx = rng.choice(LOKAL_CONTEXTS)
-        return f"{subj} {ctx}"
+        if length_dice < 0.35:
+            raw = rng.choice(SHORT_LOKAL)
+        elif length_dice < 0.80:
+            raw = rng.choice(MEDIUM_LOKAL)
+        else:
+            raw = rng.choice(LONG_LOKAL)
+            
+    return apply_human_casing(raw, seed_int)
 
 
 def generate_humanized_overview(seed_id: str) -> str:
@@ -223,23 +311,27 @@ def generate_humanized_overview(seed_id: str) -> str:
 def resolve_best_title(raw_title: str, content: str, category: str, tier: str, item_id: str) -> tuple[str, str]:
     """
     Fungsi utama untuk memutuskan judul terbaik:
-    1. Coba ekstrak dari caption teks asli Discord (jika ada cerita menarik)
+    1. Coba ekstrak dari caption teks asli Discord (jika ada teks menarik)
     2. Coba periksa apakah raw_title sudah bagus/bukan garbage
-    3. Jika garbage/acak, buat judul casual slang anak muda yang menggoda
+    3. Jika garbage/acak, buat judul casual campur (panjang/pendek bervariasi)
     """
     clean_cap = clean_discord_caption(content)
     if clean_cap and not is_garbage_or_random_title(clean_cap):
+        seed_int = int(hashlib.md5(str(item_id).encode("utf-8")).hexdigest(), 16)
+        formatted_title = apply_human_casing(clean_cap, seed_int)
         overview = generate_humanized_overview(item_id)
-        return clean_cap, overview
+        return formatted_title, overview
 
     if raw_title and not is_garbage_or_random_title(raw_title):
         cleaned_raw = re.sub(r'^\[.*?\]\s*', '', raw_title).strip()
         cleaned_raw = re.sub(r'\(.*?\)', '', cleaned_raw).strip()
         cleaned_raw = re.sub(r'\s*-\s*Edisi.*$', '', cleaned_raw, flags=re.I).strip()
         if len(cleaned_raw) >= 5 and not is_garbage_or_random_title(cleaned_raw):
+            seed_int = int(hashlib.md5(str(item_id).encode("utf-8")).hexdigest(), 16)
+            formatted_title = apply_human_casing(cleaned_raw, seed_int)
             overview = generate_humanized_overview(item_id)
-            return cleaned_raw, overview
+            return formatted_title, overview
 
-    thematic_title = generate_thematic_title(category, tier, item_id)
+    mixed_title = generate_mixed_title(category, tier, item_id)
     overview = generate_humanized_overview(item_id)
-    return thematic_title, overview
+    return mixed_title, overview
