@@ -69,12 +69,10 @@ export function extractEmbedUrl(input: string): string {
     return match[1];
   }
 
-  // ZeroStorage: ubah /file/xxx atau /watch/xxx jadi /embed/xxx
-  if (trimmed.includes('zerostorage.net/file/')) {
-    return trimmed.replace('/file/', '/embed/');
-  }
-  if (trimmed.includes('zerostorage.net/watch/')) {
-    return trimmed.replace('/watch/', '/embed/');
+  // ZeroStorage: ubah /file/xxx, /watch/xxx, atau /api/files/xxx/stream jadi /embed/xxx
+  const zsMatch = trimmed.match(/zerostorage\.net\/(?:embed|watch|file|api\/files)\/([a-zA-Z0-9_-]+)/i);
+  if (zsMatch && zsMatch[1]) {
+    return `https://zerostorage.net/embed/${zsMatch[1]}`;
   }
 
   // Lulustream: ubah https://luluvdo.com/xxx atau https://lulustream.com/xxx jadi /e/xxx

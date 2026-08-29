@@ -4,14 +4,12 @@
  * 
  * Fitur:
  * - Menampilkan thumbnail asli dari server jika tersedia
- * - Auto-capture snapshot cuplikan video secara dinamis via client-side video canvas
- * - Fallback bersih ke kartu logo resmi Sekolah Nakal jika offline/tanpa media
+ * - Fallback bersih & aman ke kartu logo resmi Sekolah Nakal tanpa error CORS & tanpa memory leak
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Movie } from '@/types/movie';
 import { cn } from '@/utils/cn';
-import { getDirectStreamUrl } from '@/utils/videoEmbed';
 
 interface DynamicThumbnailProps {
   movie: Movie;
@@ -19,20 +17,15 @@ interface DynamicThumbnailProps {
   isLocked?: boolean;
 }
 
-const dynamicThumbCache = new Map<string, string>();
-
 export function DynamicThumbnail({
   movie,
   className,
   isLocked = false,
 }: DynamicThumbnailProps) {
   const [imgError, setImgError] = useState(false);
-  const [capturedFrame, setCapturedFrame] = useState<string | null>(() => {
-    return dynamicThumbCache.get(movie.id) || null;
-  });
 
-  const posterSource = movie.backdropUrl || movie.posterUrl;
-  const isCustomImage =
+  const posterSource = movie.posterUrl || movie.backdropUrl;
+  const hasValidImage =
     posterSource &&
     posterSource !== '/images/logo_v2.png' &&
     !posterSource.endsWith('/images/logo_v2.png') &&
@@ -40,68 +33,10 @@ export function DynamicThumbnail({
     !posterSource.endsWith('/images/logo.png') &&
     !imgError;
 
-  // Auto-capture video snapshot frame jika poster belum ada dan videoUrl aktif
-  useEffect(() => {
-    if (isCustomImage || capturedFrame || !movie.videoUrl) return;
-
-    const streamUrl = getDirectStreamUrl(movie.videoUrl);
-    if (!streamUrl || streamUrl.includes('/uploads/videos/') || streamUrl.includes('dood') || streamUrl.includes('streamtape')) {
-      return;
-    }
-
-    if (dynamicThumbCache.has(movie.id)) {
-      setCapturedFrame(dynamicThumbCache.get(movie.id)!);
-      return;
-    }
-
-    let isMounted = true;
-    const vid = document.createElement('video');
-    vid.crossOrigin = 'anonymous';
-    vid.src = streamUrl;
-    vid.muted = true;
-    vid.preload = 'metadata';
-
-    const handleLoadedMetadata = () => {
-      const dur = vid.duration && isFinite(vid.duration) ? vid.duration : 10;
-      const targetTime = Math.min(2.0, Math.max(0.1, dur * 0.1));
-      vid.currentTime = targetTime;
-    };
-
-    const handleSeeked = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 480;
-        canvas.height = 270;
-        const ctx = canvas.getContext('2d');
-        if (ctx && isMounted) {
-          ctx.drawImage(vid, 0, 0, 480, 270);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-          dynamicThumbCache.set(movie.id, dataUrl);
-          setCapturedFrame(dataUrl);
-        }
-      } catch {
-        // ignore cross-origin canvas security errors
-      } finally {
-        vid.remove();
-      }
-    };
-
-    vid.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-    vid.addEventListener('seeked', handleSeeked, { once: true });
-
-    return () => {
-      isMounted = false;
-      vid.remove();
-    };
-  }, [movie.id, movie.videoUrl, isCustomImage, capturedFrame]);
-
-  // Tampilkan gambar asli dari server atau canvas snapshot
-  const finalImageSrc = isCustomImage ? posterSource : capturedFrame;
-
-  if (finalImageSrc) {
+  if (hasValidImage) {
     return (
       <img
-        src={finalImageSrc}
+        src={posterSource}
         alt={movie.title}
         loading="lazy"
         onError={() => setImgError(true)}
@@ -114,7 +49,7 @@ export function DynamicThumbnail({
     );
   }
 
-  // Render Clean Logo Fallback Card
+  // Render Clean Logo Fallback Card (Tanpa Network Request & Tanpa CORS Error)
   return (
     <div
       className={cn(
