@@ -39,10 +39,11 @@ export function DynamicThumbnail({
         src={posterSource}
         alt={movie.title}
         loading="lazy"
+        decoding="async"
         onError={() => setImgError(true)}
         className={cn(
-          'h-full w-full object-cover transition-all duration-300',
-          isLocked ? 'filter blur-md brightness-40 contrast-125' : 'group-hover:scale-105',
+          'h-full w-full object-cover transition-transform duration-200 will-change-transform',
+          isLocked ? 'brightness-50' : 'group-hover:scale-105',
           className
         )}
       />

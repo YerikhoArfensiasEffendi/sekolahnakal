@@ -93,13 +93,14 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* High-Performance Catalog Rendering Optimization for Millions of Videos */
+  /* High-Performance Catalog Rendering Optimization for Safari & Mobile (60fps) */
   .video-catalog-item {
     -webkit-transform: translateZ(0);
     transform: translateZ(0);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
-    will-change: transform;
+    content-visibility: auto;
+    contain-intrinsic-size: 0 200px;
   }
 
   /* Private Video Security Protections */
