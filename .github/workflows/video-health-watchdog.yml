@@ -1,0 +1,32 @@
+name: Video Stream Health Watchdog & Auto-Repair
+
+on:
+  schedule:
+    # Berjalan setiap 6 jam secara otomatis
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Run Video Health Watchdog & Auto-Repair
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          ZEROSTORAGE_API_KEY: ${{ secrets.ZEROSTORAGE_API_KEY }}
+          LIVE_API_BASE: "https://sekolahnakal.so791.com/api"
+        run: |
+          python scripts/video_health_checker_daemon.py
