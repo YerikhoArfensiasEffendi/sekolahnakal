@@ -28,13 +28,23 @@ export function getStoredMovies(): Movie[] {
       if (Array.isArray(parsed)) {
         return parsed.map((m) => {
           const cleanRating = (m.rating === 8.0 || m.rating === 9.6 || m.rating === 8) ? 0 : (m.rating || 0);
-          const cleanGenres = Array.isArray(m.genres)
-            ? m.genres.filter(
-                (g: string) => typeof g === 'string' && g.toLowerCase().trim() !== 'romance & sensual'
-              )
-            : ['Tidur'];
+          const rawGenres = Array.isArray(m.genres) && m.genres.length > 0
+            ? m.genres
+            : (m.category ? [m.category] : (Array.isArray(m.tags) && m.tags.length > 0 ? [m.tags[0]] : ['Tidur']));
+          const cleanGenres = rawGenres.filter(
+            (g: string) => typeof g === 'string' && g.toLowerCase().trim() !== 'romance & sensual'
+          );
+          const poster = m.posterUrl || m.poster || '/images/logo_v2.png';
+          const backdrop = m.backdropUrl || m.banner || poster;
+          const overview = m.overview || m.description || '';
+          const durationMin = typeof m.duration === 'number' && m.duration > 400 ? Math.max(1, Math.round(m.duration / 60)) : (m.duration || 60);
+
           return {
             ...m,
+            posterUrl: poster,
+            backdropUrl: backdrop,
+            overview: overview,
+            duration: durationMin,
             rating: cleanRating,
             genres: cleanGenres.length > 0 ? cleanGenres : ['Tidur'],
           };

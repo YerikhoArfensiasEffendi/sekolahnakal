@@ -221,6 +221,29 @@ if ($method === 'POST') {
     $id = isset($data['id']) && !empty($data['id']) ? (string)$data['id'] : (string)(time() . rand(100, 999));
     $data['id'] = $id;
 
+    // Normalize legacy / alternative field names
+    if (empty($data['posterUrl']) && !empty($data['poster'])) {
+        $data['posterUrl'] = $data['poster'];
+    }
+    if (empty($data['backdropUrl']) && !empty($data['banner'])) {
+        $data['backdropUrl'] = $data['banner'];
+    }
+    if (empty($data['overview']) && !empty($data['description'])) {
+        $data['overview'] = $data['description'];
+    }
+    if (empty($data['genres'])) {
+        if (!empty($data['category'])) {
+            $data['genres'] = [(string)$data['category']];
+        } elseif (!empty($data['tags']) && is_array($data['tags'])) {
+            $data['genres'] = [$data['tags'][0]];
+        } else {
+            $data['genres'] = ['Media'];
+        }
+    }
+    if (isset($data['duration']) && is_numeric($data['duration']) && $data['duration'] > 400) {
+        $data['duration'] = max(1, (int)round($data['duration'] / 60));
+    }
+
     // Auto extract and save base64 poster as static file to keep movies.json tiny & fast
     $posterDir = dirname(__DIR__) . '/uploads/posters';
     if (!file_exists($posterDir)) {
