@@ -7,16 +7,15 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
 import { env } from '@/config/env';
 import { ROUTES } from '@/constants/routes';
-import { getTierBadgeConfig, DISCORD_BOT_INVITE_URL, hasUploadAccessFromRoles } from '@/utils/tier';
+import { getTierBadgeConfig, DISCORD_BOT_INVITE_URL, TELEGRAM_INVITE_URL, hasUploadAccessFromRoles } from '@/utils/tier';
 import {
   IconCrown,
   IconLogout,
   IconTag,
-  IconUsers,
-  IconMessageSquare,
+  IconDiscord,
+  IconTelegram,
   IconSettings,
   IconBookmark,
-  IconIdCard,
   IconUser,
 } from '@/components/icons';
 import { movieStore } from '@/services/movieStore.service';
@@ -301,26 +300,28 @@ export function Header() {
               <IconTag className="w-4 h-4" />
             </Link>
 
-            {/* 2. Community / Private Server Icon */}
-            <Link
-              to="/private-server"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-purple-400 hover:bg-white/[0.06] transition-colors"
-              title="Feed Komunitas & Private Server"
-              aria-label="Feed Komunitas"
-            >
-              <IconUsers className="w-4 h-4" />
-            </Link>
-
-            {/* 3. Discord Chat Icon */}
+            {/* 2. Official Discord Link */}
             <a
               href={DISCORD_BOT_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-[#5865F2] hover:bg-white/[0.06] transition-colors"
-              title="Chat Server Discord"
-              aria-label="Chat Server Discord"
+              title="Server Discord Resmi"
+              aria-label="Server Discord Resmi"
             >
-              <IconMessageSquare className="w-4 h-4" />
+              <IconDiscord className="w-4 h-4" />
+            </a>
+
+            {/* 3. Official Telegram Link */}
+            <a
+              href={TELEGRAM_INVITE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 hover:text-[#229ED9] hover:bg-white/[0.06] transition-colors"
+              title="Channel Telegram Resmi"
+              aria-label="Channel Telegram Resmi"
+            >
+              <IconTelegram className="w-4 h-4" />
             </a>
 
             {/* 4. Settings Icon */}
@@ -388,33 +389,26 @@ export function Header() {
                         <span>Profil Saya</span>
                       </Link>
 
-                      <Link
-                        to="/profile?tab=public"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
-                      >
-                        <IconIdCard className="w-4 h-4 text-zinc-400" />
-                        <span>Profil Publik</span>
-                      </Link>
-
-                      <Link
-                        to="/private-server"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
-                      >
-                        <IconUsers className="w-4 h-4 text-zinc-400" />
-                        <span>Feed Komunitas</span>
-                      </Link>
-
                       <a
                         href={DISCORD_BOT_INVITE_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-[#5865F2] hover:bg-white/[0.08] transition-colors"
                       >
-                        <IconMessageSquare className="w-4 h-4 text-zinc-400" />
-                        <span>Chat Teman</span>
+                        <IconDiscord className="w-4 h-4 text-[#5865F2]" />
+                        <span>Komunitas Discord</span>
+                      </a>
+
+                      <a
+                        href={TELEGRAM_INVITE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-300 hover:text-[#229ED9] hover:bg-white/[0.08] transition-colors"
+                      >
+                        <IconTelegram className="w-4 h-4 text-[#229ED9]" />
+                        <span>Channel Telegram</span>
                       </a>
 
                       <Link
