@@ -87,8 +87,15 @@ export default function PrivateServer() {
 
   const gridTopRef = useRef<HTMLDivElement>(null);
 
-  // Listen to live database updates
+  // Listen to live database updates & initial server fetch
   useEffect(() => {
+    movieStore.refreshFromServer().then((movies) => {
+      if (movies && movies.length > 0) setAllMovies(movies);
+    });
+    categoryStore.refreshFromServer().then((cats) => {
+      if (cats && cats.length > 0) setCategories(cats);
+    });
+
     const handleUpdate = () => {
       setAllMovies(movieStore.getAll());
       setCategories(categoryStore.getAll());

@@ -44,7 +44,7 @@ export default function Home() {
 
   const loadData = async () => {
     try {
-      const all = movieStore.getAll();
+      const all = await movieStore.refreshFromServer();
       const [continueProgress] = await Promise.all([
         streamingService.getContinueWatching(),
       ]);

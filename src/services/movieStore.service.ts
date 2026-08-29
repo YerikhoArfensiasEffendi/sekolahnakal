@@ -62,7 +62,13 @@ function saveLocalMovies(movies: Movie[]): void {
 let hasInitialSynced = false;
 export async function syncMoviesFromServer(): Promise<Movie[]> {
   try {
-    const res = await fetch('/api/movies.php', { method: 'GET' });
+    const res = await fetch(`/api/movies.php?_t=${Date.now()}`, {
+      method: 'GET',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
     if (res.ok) {
       const serverMovies: Movie[] = await res.json();
       if (Array.isArray(serverMovies)) {

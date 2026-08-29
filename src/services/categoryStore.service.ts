@@ -71,6 +71,10 @@ export const categoryStore = {
     return getStoredCategories();
   },
 
+  async refreshFromServer(): Promise<Genre[]> {
+    return await syncCategoriesFromServer();
+  },
+
   // Cari berdasarkan slug
   getBySlug(slug: string): Genre | undefined {
     const all = getStoredCategories();
