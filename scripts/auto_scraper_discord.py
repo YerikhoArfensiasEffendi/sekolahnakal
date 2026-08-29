@@ -40,7 +40,6 @@ TARGET_CHANNELS = [
     {"id": "1402628474157400074", "name": "⌜🔞⌟⇾media-asia", "category": "Media Asia", "tier": "regular"},
     {"id": "1402627069392715876", "name": "⌜🔞⌟⇾media-lokal", "category": "Media Lokal", "tier": "regular"},
     {"id": "1518603870970843269", "name": "⌜👙⌟⇾share-kolpri", "category": "Koleksi Pribadi", "tier": "regular"},
-    {"id": "1403468388659101776", "name": "⌜🍑⌟⇾media-sfw", "category": "Media SFW", "tier": "regular"},
 
     # VIP Asia & East
     {"id": "1408159322780733491", "name": "⌜💎⌟⇾media-china", "category": "Media China", "tier": "vip"},
@@ -69,7 +68,6 @@ CHANNEL_GROUPS = {
         "1402628474157400074", # Media Asia Reguler
         "1402627069392715876", # Media Lokal Reguler
         "1518603870970843269", # Share Kolpri
-        "1403468388659101776", # Media SFW
     ],
     "vip-asia-east": [
         "1408159322780733491", # VIP Media China
