@@ -154,6 +154,9 @@ export function ArtPlayerComponent({ movieId, streamingData, className, onReady 
       contextmenu: [],
       moreVideoAttr: {
         playsInline: true,
+        'webkit-playsinline': 'true',
+        'x5-video-player-type': 'h5',
+        'x5-video-player-fullscreen': 'true',
         preload: 'auto',
         controlsList: 'nodownload noplaybackrate noremoteplayback',
         disablePictureInPicture: true,

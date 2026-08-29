@@ -567,7 +567,7 @@ export const movieStore = {
   },
 
   async getStreamingData(id: string): Promise<StreamingData> {
-    const detail = this.getById(id);
+    const detail = await this.getByIdAsync(id);
     let videoStream = detail?.videoUrl?.trim() || '';
 
     // Jika videoUrl tidak ada atau berupa blob usang, coba cari dari IndexedDB / localStorage
