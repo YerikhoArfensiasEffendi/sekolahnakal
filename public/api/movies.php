@@ -247,8 +247,8 @@ if ($method === 'POST') {
             $data['genres'] = ['Media'];
         }
     }
-    if (isset($data['duration']) && is_numeric($data['duration']) && $data['duration'] > 400) {
-        $data['duration'] = max(1, (int)round($data['duration'] / 60));
+    if (isset($data['duration']) && is_numeric($data['duration'])) {
+        $data['duration'] = (int)$data['duration'];
     }
 
     // Auto extract and save base64 poster as static file to keep movies.json tiny & fast

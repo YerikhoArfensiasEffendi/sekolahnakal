@@ -35,14 +35,14 @@ function normalizeMovieItem(m: any): Movie {
   const poster = m.posterUrl || m.poster || '/images/logo_v2.png';
   const backdrop = m.backdropUrl || m.banner || poster;
   const overview = m.overview || m.description || '';
-  const durationMin = typeof m.duration === 'number' && m.duration > 400 ? Math.max(1, Math.round(m.duration / 60)) : (m.duration || 60);
+  const durationSec = typeof m.duration === 'number' ? m.duration : 60;
 
   return {
     ...m,
     posterUrl: poster,
     backdropUrl: backdrop,
     overview: overview,
-    duration: durationMin,
+    duration: durationSec,
     rating: cleanRating,
     genres: cleanGenres.length > 0 ? cleanGenres : ['Tidur'],
   };

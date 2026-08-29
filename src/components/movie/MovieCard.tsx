@@ -27,13 +27,7 @@ import {
 } from '@/components/icons';
 import { DynamicThumbnail } from './DynamicThumbnail';
 
-const SAMPLE_PREVIEW_VIDEOS = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-];
+
 
 interface MovieCardProps {
   movie: Movie;
@@ -49,6 +43,7 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [actualVideoUrl, setActualVideoUrl] = useState<string>('');
+  const [detectedDuration, setDetectedDuration] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hoverTimeoutRef = useRef<number | null>(null);
@@ -58,6 +53,11 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
     let isMounted = true;
 
     async function loadVideoSource() {
+      if (movie.videoUrl && isMounted) {
+        setActualVideoUrl(movie.videoUrl);
+        return;
+      }
+
       // 1. Cek dari IndexedDB
       const blobUrl = await videoStorageService.getVideoUrl(movie.id);
       if (blobUrl && isMounted) {
@@ -71,39 +71,21 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
         setActualVideoUrl(customUrl);
         return;
       }
-
-      // 3. Fallback ke sample video
-      if (isMounted) {
-        const numId = parseInt(movie.id, 10) || 1;
-        setActualVideoUrl(SAMPLE_PREVIEW_VIDEOS[(numId - 1) % SAMPLE_PREVIEW_VIDEOS.length]!);
-      }
     }
 
     loadVideoSource();
     return () => {
       isMounted = false;
     };
-  }, [movie.id]);
+  }, [movie.id, movie.videoUrl]);
 
-  // Validasi URL preview agar HTML5 video tidak crash/blank hitam
+  // Resolusi URL preview untuk streaming langsung ZeroStorage / MP4
   const previewVideoSource = useMemo(() => {
-    if (movie.previewUrl) {
-      return movie.previewUrl;
-    }
-    if (!actualVideoUrl) {
-      const numId = parseInt(movie.id, 10) || 1;
-      return SAMPLE_PREVIEW_VIDEOS[(numId - 1) % SAMPLE_PREVIEW_VIDEOS.length]!;
-    }
-    const isPlayableDirect =
-      actualVideoUrl.startsWith('blob:') ||
-      actualVideoUrl.startsWith('data:') ||
-      actualVideoUrl.startsWith('/uploads/') ||
-      /\.(mp4|webm|mov|mkv|m4v)(\?.*)?$/i.test(actualVideoUrl);
-    if (isPlayableDirect) return actualVideoUrl;
-
-    const numId = parseInt(movie.id, 10) || 1;
-    return SAMPLE_PREVIEW_VIDEOS[(numId - 1) % SAMPLE_PREVIEW_VIDEOS.length]!;
-  }, [movie.previewUrl, actualVideoUrl, movie.id]);
+    if (movie.previewUrl) return movie.previewUrl;
+    if (movie.videoUrl) return movie.videoUrl;
+    if (actualVideoUrl) return actualVideoUrl;
+    return '';
+  }, [movie.previewUrl, movie.videoUrl, actualVideoUrl]);
 
   const handleMouseEnter = () => {
     if (isLocked || !previewVideoSource) return;
@@ -111,15 +93,15 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
     hoverTimeoutRef.current = window.setTimeout(() => {
       setIsPlayingPreview(true);
       if (videoRef.current) {
-        videoRef.current.currentTime = 0;
+        videoRef.current.muted = true;
         const playPromise = videoRef.current.play();
         if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            setIsVideoPlaying(false);
-          });
+          playPromise
+            .then(() => setIsVideoPlaying(true))
+            .catch(() => setIsVideoPlaying(false));
         }
       }
-    }, 100);
+    }, 80);
   };
 
   const handleMouseLeave = () => {
@@ -130,7 +112,9 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
     setIsVideoPlaying(false);
     if (videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.currentTime = 0;
+      try {
+        videoRef.current.currentTime = 0;
+      } catch {}
     }
   };
 
@@ -187,13 +171,20 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
               loop
               playsInline
               preload="metadata"
+              onLoadedMetadata={(e) => {
+                const dur = e.currentTarget.duration;
+                if (dur && !isNaN(dur) && dur > 0) {
+                  setDetectedDuration(Math.round(dur));
+                }
+              }}
+              onLoadedData={() => setIsVideoPlaying(true)}
               onPlaying={() => setIsVideoPlaying(true)}
               onError={() => {
                 setIsVideoPlaying(false);
                 setIsPlayingPreview(false);
               }}
               className={cn(
-                'absolute inset-0 h-full w-full object-cover transition-opacity duration-200 pointer-events-none',
+                'absolute inset-0 h-full w-full object-cover transition-opacity duration-200 pointer-events-none z-10',
                 isVideoPlaying ? 'opacity-100' : 'opacity-0'
               )}
             />
@@ -230,7 +221,7 @@ export function MovieCard({ movie, variant = 'default', progress, className }: M
                 {isPlayingPreview && (
                   <span className="flex h-1.5 w-1.5 rounded-full bg-brand animate-pulse" />
                 )}
-                <span>{isPlayingPreview ? 'PREVIEW' : formatDuration(movie.duration)}</span>
+                <span>{isPlayingPreview ? 'PREVIEW' : formatDuration(detectedDuration || movie.duration)}</span>
               </div>
 
               {/* Tier Badge */}

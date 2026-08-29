@@ -3,8 +3,13 @@
  * e.g., 35 -> "35s", 85 -> "1m 25s", 3600 -> "1h", 5400 -> "1h 30m"
  */
 export function formatDuration(durationInSeconds: number): string {
-  const val = Math.max(0, Math.round(durationInSeconds || 0));
+  let val = Math.max(0, Math.round(durationInSeconds || 0));
   if (val === 0) return '0s';
+
+  // If a legacy record stored 1..5 as minutes, convert to seconds
+  if (val <= 5) {
+    val = val * 60;
+  }
 
   const hours = Math.floor(val / 3600);
   const mins = Math.floor((val % 3600) / 60);

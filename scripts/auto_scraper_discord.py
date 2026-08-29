@@ -398,7 +398,7 @@ def main(target_group="all", target_category=None, limit=30):
                     "genres": [category],
                     "category": category,
                     "tier": tier,
-                    "duration": max(1, round(duration_sec / 60)),
+                    "duration": max(5, int(duration_sec)),
                     "rating": round(random.uniform(8.5, 9.9), 1),
                     "year": int(time.strftime("%Y")),
                     "overview": content if content and not content.startswith("http") else f"Video arsip {category} - Komunitas Discord Sekolah Nakal.",
