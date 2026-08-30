@@ -23,8 +23,16 @@ export function DynamicThumbnail({
   isLocked = false,
 }: DynamicThumbnailProps) {
   const [imgError, setImgError] = useState(false);
+  let posterSource = movie.posterUrl || movie.backdropUrl || '';
 
-  const posterSource = movie.posterUrl || movie.backdropUrl;
+  // Otomatis arahkan ke ZeroStorage CDN Thumbnail jika tersedia
+  if ((!posterSource || posterSource.includes('/uploads/posters/') || posterSource.includes('/images/logo')) && movie.videoUrl) {
+    const zsMatch = movie.videoUrl.match(/zerostorage\.net\/api\/files\/([a-f0-9-]+)\/stream/i);
+    if (zsMatch && zsMatch[1]) {
+      posterSource = `https://zerostorage.net/api/files/${zsMatch[1]}/thumbnail`;
+    }
+  }
+
   const hasValidImage =
     posterSource &&
     posterSource !== '/images/logo_v2.png' &&
