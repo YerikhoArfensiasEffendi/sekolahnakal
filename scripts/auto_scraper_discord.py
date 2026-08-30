@@ -378,7 +378,7 @@ def main(target_group="all", target_category=None, limit=30):
                 log(f"    ✅ Upload Sukses: {stream_url}")
 
                 # 5. Push payload to live server
-                file_id = upload_result.get("fileId", "")
+                file_id = up_res.get("fileId", "")
                 cdn_thumb_url = f"https://zerostorage.net/api/files/{file_id}/thumbnail" if file_id else poster_data_url
                 movie_id = f"zs_{int(time.time())}_{random.randint(100, 999)}"
                 movie_payload = {
