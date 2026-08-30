@@ -3,22 +3,23 @@
 [![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20PWA%20%7C%20Mobile-ff0055.svg)](https://sekolahnakal.so791.com)
 [![Status](https://img.shields.io/badge/Status-Production%20Active-00c853.svg)](https://sekolahnakal.so791.com)
 [![React](https://img.shields.io/badge/React-19%20%7C%20TypeScript-61dafb.svg)](https://react.dev/)
-[![Scraper Engine](https://img.shields.io/badge/Cloud%20Engine-GitHub%20Actions%204--Worker%20Matrix-blueviolet.svg)](https://github.com/YerikhoArfensiasEffendi/sekolahnakal/actions)
+[![Scraper Engine](https://img.shields.io/badge/Cloud%20Engine-GitHub%20Actions%205--Worker%20Pipeline-blueviolet.svg)](https://github.com/YerikhoArfensiasEffendi/sekolahnakal/actions)
 [![Storage](https://img.shields.io/badge/Cloud%20Storage-ZeroStorage.net%20CDN-orange.svg)](https://zerostorage.net)
-[![Security](https://img.shields.io/badge/Security-RBAC%20%7C%20Anti--DDoS%20%7C%20XSS%20Guarded-green.svg)](https://sekolahnakal.so791.com)
+[![Security](https://img.shields.io/badge/Security-RBAC%20%7C%20Deep%20Inspection%20%7C%20Atomic%20Lock-green.svg)](https://sekolahnakal.so791.com)
 
-**Sekolah Nakal** adalah platform web streaming video berkinerja tinggi yang terintegrasi secara *real-time* dengan ekosistem Discord Guild. Platform ini dilengkapi dengan arsitektur penarikan arsip cloud terdistribusi (*4-Worker Parallel Matrix Scraper*), optimasi *FastStart MP4 Remuxing* untuk pemutaran instan 0-detik tanpa buffering di perangkat mobile, sistem manajemen akses berbasis peran (RBAC Tier: VVIP, VIP, Talent, Reguler), serta panel Studio Admin profesional.
+**Sekolah Nakal** adalah platform web streaming video berkinerja tinggi yang terintegrasi secara *real-time* dengan ekosistem Discord Guild. Platform ini dilengkapi dengan arsitektur penarikan arsip cloud terdistribusi (**5-Worker Parallel Pipeline & Watchdog Daemon**), AI Natural Slang Title & Copywriting Generator, optimasi *FastStart MP4 Remuxing* untuk pemutaran instan 0-detik tanpa buffering di mobile/desktop, sistem manajemen akses berbasis peran (RBAC Tier: VVIP, VIP, Talent, Reguler), serta panel Studio Admin profesional.
 
 ---
 
 ## 📑 Daftar Isi
 1. [Arsitektur & Alur Kerja Sistem (System Workflow)](#-arsitektur--alur-kerja-sistem-system-workflow)
-2. [Fitur-Fitur Utama Platform](#-fitur-fitur-utama-platform)
-3. [Pipeline Scraper Otomatis (4-Worker Parallel Matrix)](#-pipeline-scraper-otomatis-4-worker-parallel-matrix)
-4. [Standar Keamanan Sistem (Security Architecture)](#-standar-keamanan-sistem-security-architecture)
-5. [Hasil Uji Coba & Log Pengujian (Testing & Verification)](#-hasil-uji-coba--log-pengujian-testing--verification)
-6. [Struktur Direktori Proyek](#-struktur-direktori-proyek)
-7. [Panduan Instalasi & Deployment](#-panduan-instalasi--deployment)
+2. [Arsitektur 5 Worker Otomatis (5-Worker Cloud Pipeline)](#-arsitektur-5-worker-otomatis-5-worker-cloud-pipeline)
+3. [AI Title & Copywriting Engine (Humanizer Slang)](#-ai-title--copywriting-engine-humanizer-slang)
+4. [Fitur-Fitur Utama Platform](#-fitur-fitur-utama-platform)
+5. [Standar Keamanan & Integritas Sistem](#-standar-keamanan--integritas-sistem)
+6. [Hasil Uji Coba & Log Pengujian (Testing & Verification)](#-hasil-uji-coba--log-pengujian-testing--verification)
+7. [Struktur Direktori Proyek](#-struktur-direktori-proyek)
+8. [Panduan Instalasi & Deployment](#-panduan-instalasi--deployment)
 
 ---
 
@@ -29,75 +30,77 @@ Platform ini mengadopsi arsitektur *Hybrid Headless SPA + Distributed Cloud Inge
 ```mermaid
 flowchart TD
     subgraph Discord["1. Discord Guild & Community (6.800+ Arsip)"]
-        DC1["14 Channel Target (Lokal, Asia, China, Barat, Arab, Jepang, Korea, Latin, dll)"]
+        DC1["14 Channel Target (Lokal, Asia, China, Barat, Arab, Jepang, Korea, Latin, Talent)"]
         DC2["#purchase-history (Transaksi Member Real-time)"]
     end
 
-    subgraph GitHubActions["2. Cloud Ingestion Engine (GitHub Actions)"]
-        W1["⚡ Worker 1: Reguler Stream"]
-        W2["⚡ Worker 2: VIP Asia-East (China, Korea, Jepang, Taiwan)"]
-        W3["⚡ Worker 3: VIP Lokal-Asia"]
-        W4["⚡ Worker 4: VIP Global (Barat, Arab, India, Latin)"]
-        FFMPEG["FFmpeg Remux (+faststart header)"]
+    subgraph GitHubActions["2. 5-Worker Automated Cloud Pipeline (GitHub Actions & Cron)"]
+        W1["⚡ Worker 1: Reguler Stream (Setiap Jam)"]
+        W2["⚡ Worker 2: VIP Asia-East (Setiap Jam)"]
+        W3["⚡ Worker 3: VIP Lokal-Asia & Talent (Setiap Jam)"]
+        W4["⚡ Worker 4: VIP Global & Barat (Setiap Jam)"]
+        W5["🛡️ Worker 5: Video Health Watchdog & Deep Byte Inspector (Setiap 6 Jam)"]
+        AI_TITLE["🤖 AI Natural Slang Title & Copywriting Engine"]
+        FFMPEG["⚡ FFmpeg FastStart Remux (+faststart header)"]
     end
 
-    subgraph CloudStorage["3. High-Speed Cloud Storage"]
+    subgraph CloudStorage["3. High-Speed Cloud Storage & CDN"]
         ZS["ZeroStorage.net Universal CDN"]
-        ZS_API["Direct Streaming Endpoint (/api/files/{id}/stream)"]
+        ZS_API["Direct Streaming (/api/files/{id}/stream)"]
+        ZS_THUMB["Cloudflare CDN Thumbnail (/api/files/{id}/thumbnail)"]
     end
 
-    subgraph ServerBackend["4. Hostinger Production API (PHP 8.2)"]
-        API_MOVIES["/api/movies.php (Atomic LOCK_EX & Auto Anti-Duplikat)"]
-        API_POSTERS["/uploads/posters/ (Static JPG Decoded Assets)"]
+    subgraph ServerBackend["4. Hostinger Production API (PHP 8.2 & Atomic File Operations)"]
+        API_MOVIES["/api/movies.php (Atomic Write, .backup fallback & Auto-Deduplikasi)"]
         API_DISCORD["/api/discord.php (Role-Based Sync & Transaction Feed)"]
     end
 
     subgraph FrontendApp["5. Client Frontend (React 19 + TypeScript + Vite)"]
         HOME["Beranda (Rekomendasi Stabil, Swipe Transaksi Mobile)"]
-        PRIVATE["Private Server (Pagination 20 Video/Halaman)"]
-        WATCH["Pemutar Video (ArtPlayer Modern + iOS PlaysInline)"]
+        PRIVATE["Private Server (Numbered Pagination 20/Page)"]
+        WATCH["Pemutar Video (ArtPlayer Modern + Hardware MP4 Binding)"]
     end
 
     DC1 -->|Deep Historical Pagination| W1 & W2 & W3 & W4
     W1 & W2 & W3 & W4 --> FFMPEG
-    FFMPEG -->|Universal API Upload| ZS
-    ZS --> ZS_API
-    W1 & W2 & W3 & W4 -->|JSON Payload with Poster JPG| API_MOVIES
-    API_MOVIES --> API_POSTERS
+    W1 & W2 & W3 & W4 --> AI_TITLE
+    FFMPEG -->|Universal Upload| ZS
+    ZS --> ZS_API & ZS_THUMB
+    AI_TITLE --> API_MOVIES
+    W5 -->|Deep 4KB Byte Inspection| API_MOVIES & ZS
     DC2 -->|Live Sync| API_DISCORD
     API_MOVIES & API_DISCORD --> FrontendApp
-    ZS_API --> WATCH
+    ZS_API & ZS_THUMB --> WATCH & PRIVATE
 ```
-
-### Penjelasan Tahapan Alur Kerja:
-1. **Pengambilan Arsip (Ingestion)**:
-   * 4 Worker di GitHub Actions menjelajahi riwayat pesan Discord secara mendalam (*Deep Historical Pagination* menggunakan parameter `before=last_message_id`).
-   * Filter anti-duplikat langsung mengecek database server sebelum mengunduh agar tidak ada file yang diunggah dua kali.
-2. **Optimasi Buffer Instan (*FastStart Remuxing*)**:
-   * Skrip menjalankan `ffmpeg -i input.mp4 -c copy -movflags +faststart` untuk memindahkan metadata atom `moov` ke bagian awal file video. Hal ini memungkinkan pemutaran seketika (0 detik) di iPhone, Android, dan Desktop tanpa harus mengunduh keseluruhan file.
-3. **Penyimpanan di Cloud CDN**:
-   * Video diunggah langsung ke **ZeroStorage.net CDN**. Endpoint stream yang dihasilkan didaftarkan ke API server.
-4. **Penyimpanan Database & Kompresi Poster (99.4% Payload Reduction)**:
-   * Backend PHP menerima data video baru, mengonversi string poster Base64 menjadi file gambar `.jpg` statis berukuran kecil di disk server, dan mengunci file database dengan `LOCK_EX` agar penulisan paralel antar-worker aman tanpa *race condition*.
-5. **Penyajian di Aplikasi Web Client**:
-   * Aplikasi React membaca data dengan *cache-first strategy* (0ms rendering) dan memperbarui tampilan secara *asynchronous* di latar belakang.
 
 ---
 
-## 🌟 Fitur-Fitur Utama Platform
+## ⚡ Arsitektur 5 Worker Otomatis (5-Worker Cloud Pipeline)
 
-### 1. 📱 Desain Mobile-First & Ultra Responsive Layout
-* **Riwayat Transaksi Mobile Swipe Carousel**: Menampilkan bukti pembelian VIP/VVIP dari Discord dalam bentuk *horizontal swipe carousel* yang ringkas di HP (~110px tinggi layar), menggantikan daftar vertikal panjang yang memakan ruang.
-* **Bar Navigasi Modern**: Dilengkapi tautan langsung ke **Server Discord Resmi**, **Channel Telegram Resmi**, **Paket Akses & Promo**, dan **Pengaturan**.
-* **Katalog Private Server Kompak**: Navigasi filter kategori *horizontal chips*, pencarian terintegrasi, dan *Numbered Pagination* (maksimal 20 video per halaman) yang mudah disentuh dengan jempol di ponsel.
+Sistem didukung oleh **5 Worker Mandiri** yang berjalan otomatis 24/7 di cloud:
 
-### 2. 🎬 Modern Video Streaming Engine (ArtPlayer + HLS)
-* **Penyajian Multi-Format**: Mendukung pemutaran langsung MP4 high-bitrate, ZeroStorage CDN, dan HLS `.m3u8`.
-* **Dukungan Penuh iOS Safari & Android**: Menggunakan atribut `playsInline`, `webkit-playsinline`, dan `x5-video-player-type: h5` agar video tidak mengalami error *00:00 duration* atau terblokir di iPhone/iPad.
-* **Fitur Kontrol Lengkap**: Pilihan resolusi, pengaturan kecepatan putar (*playback rate*), *auto orientation*, *custom progress bar*, dan *touch gestures* (tap ganda untuk maju/mundur).
+| # | Nama Worker | Target Channel / Sumber | Jadwal Eksekusi | Tugas & Operasional |
+|---|---|---|---|---|
+| **1** | **Worker Reguler**<br>`group: reguler` | • `⌜🔞⌟⇾media-forward`<br>• `⌜🔞⌟⇾media-barat` (Reguler)<br>• `⌜🔞⌟⇾media-asia` (Reguler)<br>• `⌜🔞⌟⇾media-lokal` (Reguler)<br>• `⌜👙⌟⇾share-kolpri` | **Setiap Jam**<br>(`cron: '0 * * * *'`) | Menarik arsip publik gratis, FastStart remuxing, auto-rename slang santai, upload ZeroStorage CDN, dan publikasi ke website. |
+| **2** | **Worker VIP Asia & East**<br>`group: vip-asia-east` | • `⌜💎⌟⇾media-china`<br>• `⌜💎⌟⇾media-korea`<br>• `⌜💎⌟⇾media-jepang`<br>• `⌜💎⌟⇾media-taiwan` | **Setiap Jam**<br>(`cron: '0 * * * *'`) | Menarik arsip VIP Asia/JAV/China/Korea, optimasi buffer instan, auto-rename bertema Asia/Jepang, upload ZeroStorage CDN. |
+| **3** | **Worker VIP Lokal & Talent**<br>`group: vip-lokal-asia` | • `⌜💎⌟⇾media-lokal` (VIP)<br>• `⌜💎⌟⇾media-asia` (VIP)<br>• `⌜🔖⌟⇾save-telent`<br>• `⌜💎⌟⇾preview-telent` | **Setiap Jam**<br>(`cron: '0 * * * *'`) | Menarik konten VIP Lokal dan kolaborasi *Talent Verified*, FastStart remuxing, auto-rename slang lokal, upload ZeroStorage CDN. |
+| **4** | **Worker VIP Global & Barat**<br>`group: vip-global` | • `⌜💎⌟⇾media-barat` (VIP)<br>• `⌜💎⌟⇾media-arab`<br>• `⌜💎⌟⇾media-india`<br>• `⌜💎⌟⇾media-latin`<br>• `⌜😈⌟⇾content-farming` | **Setiap Jam**<br>(`cron: '0 * * * *'`) | Menarik video VIP Barat/Latin/Eksklusif, FastStart remuxing, auto-rename gaya Barat/Latin, upload ZeroStorage CDN. |
+| **5** | **Worker Watchdog & Auto-Repair**<br>`video-health-watchdog` | • Seluruh 2.170+ Video Database Live | **Setiap 6 Jam**<br>(`cron: '0 */6 * * *'`) | **Deep Byte Inspection (4KB)** memvalidasi validitas MP4 stream. Jika link mati/404, otomatis download ulang dari Discord; jika unrecoverable, otomatis purge dari database & storage. |
 
-### 3. 🛡️ Role-Based Access Control (RBAC Discord Sync)
-* Mengintegrasikan hak akses ke dalam 4 tingkatan tier:
+---
+
+## 🤖 AI Title & Copywriting Engine (Humanizer Slang)
+
+Platform dilengkapi modul generator judul cerdas ([`scripts/ai_title_generator.py`](scripts/ai_title_generator.py)) yang mengubah nama file mentah/acak menjadi judul super santai dengan gaya bahasa tongkrongan/anak muda yang menggoda:
+
+1. **Variasi Panjang Alami (Tidak Kaku & Tidak Monoton)**:
+   * ⚡ **Judul Pendek (1–3 kata ~ 35%)**: *"gadis desa"*, *"hijab mesum"*, *"Cewek Kosan"*, *"Cewek SMA"*, *"Kepergok wikwik"*, *"kulit mulus"*, *"cewek spanyol"*.
+   * 💬 **Judul Sedang (4–6 kata ~ 45%)**: *"Cewek Kosan Minta Jatah Malam"*, *"vcs colmek mendesah keenakan"*, *"Janda Muda Minta Jatah Malam Jumat"*, *"Gadis Manis Pasrah Di Genjot"*.
+   * 📜 **Judul Panjang (7–9 kata ~ 20%)**: *"Pasangan SMA kepergok wikwik di kosan temen sampe lemes"*, *"Model bule pirang main kasar di penthouse mewah desah kenceng banget"*.
+2. **Tanpa Tanda Kurung & Tanpa Embel-Embel**: Bebas dari bracket kategori `[...]` dan tanpa kata `Edisi` sehingga tampak 100% natural seperti ketikan manusia.
+3. **Deskripsi / Sinopsis Menggoda**: Dilengkapi ringkasan naratif 1 kalimat yang memancing rasa penasaran member.
+
+---
   * 👑 **EXCLUSIF VVIP VAULT** (Akses master raw footage & edisi 4K uncensored)
   * ⭐ **EXCLUSIF VIP STUDIO** (Serial sinematik Asia, Cosplay & JAV style)
   * 💎 **EXCLUSIF TALENT POV** (Konten sudut pandang POV & talent resmi)
