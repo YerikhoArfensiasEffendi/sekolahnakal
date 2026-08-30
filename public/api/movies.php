@@ -140,35 +140,63 @@ function deduplicateMovies($movies) {
 
 function getMovies($dataPath, $defaultMovies = []) {
     if (file_exists($dataPath)) {
-        $content = file_get_contents($dataPath);
-        $json = json_decode($content, true);
-        if (is_array($json)) {
-            $sanitized = [];
-            foreach ($json as $m) {
-                if (isset($m['videoUrl']) && strpos($m['videoUrl'], '/uploads/videos/') === 0) {
-                    $localFilePath = dirname(__DIR__) . $m['videoUrl'];
-                    if (!file_exists($localFilePath)) {
-                        $m['videoUrl'] = '';
+        $content = @file_get_contents($dataPath);
+        if ($content !== false && strlen($content) > 10) {
+            $json = json_decode($content, true);
+            if (is_array($json) && count($json) > 0) {
+                $sanitized = [];
+                foreach ($json as $m) {
+                    if (!is_array($m)) continue;
+                    if (isset($m['videoUrl']) && strpos($m['videoUrl'], '/uploads/videos/') === 0) {
+                        $localFilePath = dirname(__DIR__) . $m['videoUrl'];
+                        if (!file_exists($localFilePath)) {
+                            $m['videoUrl'] = '';
+                        }
                     }
-                }
-                if (isset($m['posterUrl']) && strpos($m['posterUrl'], '/uploads/posters/') === 0) {
-                    $localFilePath = dirname(__DIR__) . $m['posterUrl'];
-                    if (!file_exists($localFilePath)) {
-                        $m['posterUrl'] = '/images/logo_v2.png';
+                    $vidUrl = $m['videoUrl'] ?? '';
+                    if (preg_match('/zerostorage\.net\/api\/files\/([a-f0-9-]+)\/stream/i', $vidUrl, $matches)) {
+                        $fileId = $matches[1];
+                        $m['posterUrl'] = "https://zerostorage.net/api/files/{$fileId}/thumbnail";
+                        $m['backdropUrl'] = "https://zerostorage.net/api/files/{$fileId}/thumbnail";
+                    } elseif (isset($m['posterUrl']) && strpos($m['posterUrl'], '/uploads/posters/') === 0) {
+                        $localFilePath = dirname(__DIR__) . $m['posterUrl'];
+                        if (!file_exists($localFilePath)) {
+                            $m['posterUrl'] = '/images/logo_v2.png';
+                        }
                     }
+                    $sanitized[] = $m;
                 }
-                $sanitized[] = $m;
+                return deduplicateMovies($sanitized);
             }
-            return deduplicateMovies($sanitized);
         }
     }
-    file_put_contents($dataPath, json_encode([], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    
+    // Check backup if main file is temporarily being written
+    $backupPath = $dataPath . '.backup';
+    if (file_exists($backupPath)) {
+        $content = @file_get_contents($backupPath);
+        if ($content !== false && strlen($content) > 10) {
+            $json = json_decode($content, true);
+            if (is_array($json) && count($json) > 0) {
+                return deduplicateMovies($json);
+            }
+        }
+    }
+
     return [];
 }
 
 function saveMoviesList($dataPath, $movies) {
     $clean = deduplicateMovies($movies);
-    return file_put_contents($dataPath, json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    if (empty($clean)) {
+        return false;
+    }
+    $tmpPath = $dataPath . '.tmp.' . uniqid();
+    file_put_contents($tmpPath, json_encode($clean, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    if (file_exists($dataPath) && filesize($dataPath) > 10000) {
+        @copy($dataPath, $dataPath . '.backup');
+    }
+    return rename($tmpPath, $dataPath);
 }
 
 $method = $_SERVER['REQUEST_METHOD'];

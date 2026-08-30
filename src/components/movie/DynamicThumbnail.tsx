@@ -42,19 +42,24 @@ export function DynamicThumbnail({
     !imgError;
 
   if (hasValidImage) {
+    const isZeroStorageThumb = posterSource.includes('zerostorage.net');
+
     return (
-      <img
-        src={posterSource}
-        alt={movie.title}
-        loading="lazy"
-        decoding="async"
-        onError={() => setImgError(true)}
-        className={cn(
-          'h-full w-full object-cover transition-transform duration-200 will-change-transform',
-          isLocked ? 'brightness-50' : 'group-hover:scale-105',
-          className
-        )}
-      />
+      <div className="relative h-full w-full overflow-hidden bg-black flex items-center justify-center">
+        <img
+          src={posterSource}
+          alt={movie.title}
+          loading="lazy"
+          decoding="async"
+          onError={() => setImgError(true)}
+          className={cn(
+            'h-full w-full object-cover transition-transform duration-200 will-change-transform',
+            isZeroStorageThumb ? 'scale-[1.75] sm:scale-[1.8]' : '',
+            isLocked ? 'brightness-50' : 'group-hover:scale-105',
+            className
+          )}
+        />
+      </div>
     );
   }
 
