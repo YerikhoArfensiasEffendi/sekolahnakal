@@ -24,12 +24,12 @@ def log(msg):
 def main():
     log("=== MEMULAI PROSES AI AUTO-RENAME SELURUH DATABASE VIDEO ===")
     
-    # 1. Unduh file backup lengkap dari server
+    # 1. Unduh database movies.json lengkap dari server
     log("Mengunduh database movies.json lengkap dari Hostinger...")
-    temp_remote_backup = "/tmp/remote_backup_movies.json"
+    temp_remote_backup = "/tmp/remote_live_movies.json"
     subprocess.run([
         "scp", "-P", SSH_PORT, "-o", "StrictHostKeyChecking=no",
-        f"{SSH_USER}@{SSH_HOST}:/home/u948854164/domains/sekolahnakal.so791.com/public_html/api/data/movies.json.backup_pre_ai_rename.json",
+        f"{SSH_USER}@{SSH_HOST}:{REMOTE_PATH_1}",
         temp_remote_backup
     ], check=True)
     
