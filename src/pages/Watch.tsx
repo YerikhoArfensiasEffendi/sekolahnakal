@@ -55,8 +55,8 @@ export default function Watch() {
     if (!id) return;
     setStatus('loading');
     try {
-      const [, movieDetail, streamData] = await Promise.all([
-        movieStore.refreshFromServer(),
+      await movieStore.refreshFromServer();
+      const [movieDetail, streamData] = await Promise.all([
         movieService.getById(id),
         movieService.getStreamingData(id),
       ]);
