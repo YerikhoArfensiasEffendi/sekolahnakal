@@ -25,53 +25,93 @@
 
 ## 🏗️ Arsitektur & Alur Kerja Sistem (System Workflow)
 
-Platform ini mengadopsi arsitektur *Hybrid Headless SPA + Distributed Cloud Ingestion Pipeline* dengan alur data *end-to-end* sebagai berikut:
+Platform ini mengadopsi arsitektur *Hybrid Headless SPA + Distributed Cloud Ingestion & Watchdog Pipeline* dengan alur data *end-to-end* sebagai berikut:
 
 ```mermaid
 flowchart TD
-    subgraph Discord["1. Discord Guild & Community (6.800+ Arsip)"]
-        DC1["14 Channel Target (Lokal, Asia, China, Barat, Arab, Jepang, Korea, Latin, Talent)"]
-        DC2["#purchase-history (Transaksi Member Real-time)"]
+    subgraph S1["1. Discord Guild & Community (6.800+ Arsip Video)"]
+        DC_CHANNELS["14 Channel Target (Lokal, Asia, China, Barat, Arab, Jepang, Korea, Latin, Talent)"]
+        DC_PURCHASE["#purchase-history (Log Transaksi Pembayaran Real-time)"]
     end
 
-    subgraph GitHubActions["2. 5-Worker Automated Cloud Pipeline (GitHub Actions & Cron)"]
-        W1["⚡ Worker 1: Reguler Stream (Setiap Jam)"]
-        W2["⚡ Worker 2: VIP Asia-East (Setiap Jam)"]
-        W3["⚡ Worker 3: VIP Lokal-Asia & Talent (Setiap Jam)"]
-        W4["⚡ Worker 4: VIP Global & Barat (Setiap Jam)"]
-        W5["🛡️ Worker 5: Video Health Watchdog & Deep Byte Inspector (Setiap 6 Jam)"]
-        AI_TITLE["🤖 AI Natural Slang Title & Copywriting Engine"]
-        FFMPEG["⚡ FFmpeg FastStart Remux (+faststart header)"]
+    subgraph S2["2. Cloud Ingestion Engine (GitHub Actions Matrix)"]
+        W_INGEST["⚡ Worker 1–4: Parallel Ingestion Matrix (Setiap Jam)\n[Reguler, VIP Asia-East, VIP Lokal-Asia, VIP Global]"]
+        FFMPEG["⚡ FFmpeg Engine: FastStart Remux (+faststart atom header)"]
+        AI_TITLE["🤖 AI Natural Slang Engine: Copywriting & Mixed-Length Generator"]
     end
 
-    subgraph CloudStorage["3. High-Speed Cloud Storage & CDN"]
-        ZS["ZeroStorage.net Universal CDN"]
-        ZS_API["Direct Streaming (/api/files/{id}/stream)"]
+    subgraph S3["3. High-Speed Cloud Storage & CDN"]
+        ZS_STORAGE["ZeroStorage.net Universal CDN"]
+        ZS_STREAM["Direct Stream Endpoint (/api/files/{id}/stream)"]
         ZS_THUMB["Cloudflare CDN Thumbnail (/api/files/{id}/thumbnail)"]
     end
 
-    subgraph ServerBackend["4. Hostinger Production API (PHP 8.2 & Atomic File Operations)"]
-        API_MOVIES["/api/movies.php (Atomic Write, .backup fallback & Auto-Deduplikasi)"]
+    subgraph S4["4. Hostinger Backend API (PHP 8.2 & Atomic File Locking)"]
+        API_MOVIES["/api/movies.php (Atomic Temp Write, .backup Fallback, Deduplikasi)"]
         API_DISCORD["/api/discord.php (Role-Based Sync & Transaction Feed)"]
     end
 
-    subgraph FrontendApp["5. Client Frontend (React 19 + TypeScript + Vite)"]
-        HOME["Beranda (Rekomendasi Stabil, Swipe Transaksi Mobile)"]
-        PRIVATE["Private Server (Numbered Pagination 20/Page)"]
-        WATCH["Pemutar Video (ArtPlayer Modern + Hardware MP4 Binding)"]
+    subgraph S5["5. Cloud Watchdog & Auto-Repair Daemon"]
+        W5_WATCHDOG["🛡️ Worker 5: Video Health Watchdog (Setiap 6 Jam)\n[Deep 4KB Byte Inspection & Auto Re-Upload / Purge]"]
     end
 
-    DC1 -->|Deep Historical Pagination| W1 & W2 & W3 & W4
-    W1 & W2 & W3 & W4 --> FFMPEG
-    W1 & W2 & W3 & W4 --> AI_TITLE
-    FFMPEG -->|Universal Upload| ZS
-    ZS --> ZS_API & ZS_THUMB
-    AI_TITLE --> API_MOVIES
-    W5 -->|Deep 4KB Byte Inspection| API_MOVIES & ZS
-    DC2 -->|Live Sync| API_DISCORD
-    API_MOVIES & API_DISCORD --> FrontendApp
-    ZS_API & ZS_THUMB --> WATCH & PRIVATE
+    subgraph S6["6. Client Frontend (React 19 + TypeScript + Vite)"]
+        CLIENT_HOME["Beranda (Rekomendasi Stabil, Swipe Transaksi Mobile)"]
+        CLIENT_PRIVATE["Private Server (Numbered Pagination 20/Page & Auto-Crop)"]
+        CLIENT_WATCH["Watch Player (ArtPlayer + Direct Hardware MP4 Binding)"]
+    end
+
+    %% Pipeline Data Flow
+    DC_CHANNELS -->|Deep Pagination Ingestion| W_INGEST
+    W_INGEST -->|Process Raw Stream| FFMPEG
+    W_INGEST -->|Clean & Humanize Title| AI_TITLE
+    FFMPEG -->|Universal API Upload| ZS_STORAGE
+    ZS_STORAGE --> ZS_STREAM & ZS_THUMB
+    AI_TITLE -->|Register Payload| API_MOVIES
+    ZS_STREAM -->|Register Stream URL| API_MOVIES
+    
+    %% Watchdog Flow
+    W5_WATCHDOG -->|4KB Range Header Audit| ZS_STREAM
+    W5_WATCHDOG -->|Auto-Purge / Auto-Rename Sync| API_MOVIES
+    
+    %% Discord Live Sync Flow
+    DC_PURCHASE -->|Instant Fetch| API_DISCORD
+    
+    %% Frontend Consumption
+    API_MOVIES --> CLIENT_HOME & CLIENT_PRIVATE
+    API_DISCORD --> CLIENT_HOME
+    ZS_STREAM & ZS_THUMB --> CLIENT_WATCH & CLIENT_PRIVATE
 ```
+
+### 🔍 Penjelasan 7 Tahapan Alur Kerja Sistem:
+
+1. **Tahap 1: Pengambilan Arsip Cerdas (Deep Ingestion & Anti-Duplikat)**:
+   * **Worker 1 s/d 4** di GitHub Actions menjalankan *Deep Historical Pagination* menggunakan parameter Discord API `before=message_id` untuk menyedot arsip 6.800+ video.
+   * Sistem melakukan pengecekan 3 lapis (`id`, `discordMsgId`, `videoUrl`) ke database server agar tidak ada file yang diunggah ulang (*zero duplicate*).
+
+2. **Tahap 2: Optimasi FastStart MP4 Remuxing (Buffer 0-Detik)**:
+   * Skrip memproses video dengan `ffmpeg -i input.mp4 -c copy -movflags +faststart`.
+   * Metadata atom `moov` dipindahkan ke bagian paling depan file, memungkinkan video langsung berputar seketika (0 detik) di iPhone, Android, dan Desktop tanpa harus menunggu unduhan selesai.
+
+3. **Tahap 3: AI Natural Slang Title & Copywriting Generator**:
+   * Skrip [`scripts/ai_title_generator.py`](scripts/ai_title_generator.py) secara otomatis mengubah nama file mentah (seperti *1000146868.mp4* atau *Kingdom20Of20Dark*) menjadi judul bahasa gaul/slang anak muda Indonesia yang sangat santai, menggoda, bervariasi (pendek 35%, sedang 45%, panjang 20%), tanpa tanda kurung `[...]`, dan tanpa kata `Edisi`.
+
+4. **Tahap 4: Cloud Storage & Cloudflare CDN Thumbnail Ingestion**:
+   * Video diunggah ke **ZeroStorage.net Universal CDN**.
+   * URL streaming langsung (`https://zerostorage.net/api/files/{id}/stream`) dan thumbnail Cloudflare CDN (`https://zerostorage.net/api/files/{id}/thumbnail`) dicatat secara terpusat.
+
+5. **Tahap 5: Atomic Database Locking & Hostinger API Sync**:
+   * Backend PHP [`public/api/movies.php`](public/api/movies.php) menerima payload video dan menuliskan data secara **Atomic** (menulis ke file `.tmp` terlebih dahulu lalu `rename()`) serta membuat salinan otomatis ke `.backup`.
+   * Hal ini mencegah korupsi atau terhapusnya data ketika beberapa worker melakukan penulisan secara bersamaan.
+
+6. **Tahap 6: Worker 5 Video Health Watchdog & Deep Byte Auto-Repair**:
+   * Berjalan setiap 6 jam (`video-health-watchdog.yml`) untuk membaca **4KB chunk pertama** dari setiap streaming video.
+   * Jika terdeteksi video corrupt / 404, watchdog otomatis mengunduh ulang sumber aslinya dari Discord; jika unrecoverable, watchdog otomatis membersihkan video rusak tersebut dari database & storage.
+
+7. **Tahap 7: Client Frontend Rendering & Smart Auto-Crop**:
+   * Web client React 19 memuat katalog dengan strategi *cache-first* (0ms rendering).
+   * Komponen [`DynamicThumbnail.tsx`](src/components/movie/DynamicThumbnail.tsx) menerapkan *Smart Auto-Crop (`scale-[1.8] object-cover`)* sehingga gambar memenuhi kartu video 16:9 secara penuh tanpa bingkai hitam (*letterbox*).
+   * Pemutar video ArtPlayer mengikat stream MP4 langsung ke decoder hardware peramban untuk mencegah *reconnecting loop*.
 
 ---
 
