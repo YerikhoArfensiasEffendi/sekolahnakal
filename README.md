@@ -101,6 +101,21 @@ Platform dilengkapi modul generator judul cerdas ([`scripts/ai_title_generator.p
 3. **Deskripsi / Sinopsis Menggoda**: Dilengkapi ringkasan naratif 1 kalimat yang memancing rasa penasaran member.
 
 ---
+
+## 🌟 Fitur-Fitur Utama Platform
+
+### 1. 📱 Desain Mobile-First & Ultra Responsive Layout
+* **Riwayat Transaksi Mobile Swipe Carousel**: Menampilkan bukti pembelian VIP/VVIP dari Discord dalam bentuk *horizontal swipe carousel* yang ringkas di HP (~110px tinggi layar), menggantikan daftar vertikal panjang yang memakan ruang.
+* **Bar Navigasi Modern**: Dilengkapi tautan langsung ke **Server Discord Resmi**, **Channel Telegram Resmi**, **Paket Akses & Promo**, dan **Pengaturan**.
+* **Katalog Private Server Kompak**: Navigasi filter kategori *horizontal chips*, pencarian terintegrasi, dan *Numbered Pagination* (maksimal 20 video per halaman) yang mudah disentuh dengan jempol di ponsel.
+
+### 2. 🎬 Modern Video Streaming Engine (ArtPlayer + HLS)
+* **Penyajian Multi-Format**: Mendukung pemutaran langsung MP4 high-bitrate, ZeroStorage CDN, dan HLS `.m3u8`.
+* **Dukungan Penuh iOS Safari & Android**: Menggunakan atribut `playsInline`, `webkit-playsinline`, dan `x5-video-player-type: h5` agar video tidak mengalami error *00:00 duration* atau terblokir di iPhone/iPad.
+* **Smart Auto-Crop Thumbnail**: Mengeliminasi padding hitam (*letterbox*) dari thumbnail ZeroStorage secara presisi dengan `scale-[1.8] object-cover` sehingga gambar memenuhi 100% kartu video.
+
+### 3. 🛡️ Role-Based Access Control (RBAC Discord Sync)
+* Mengintegrasikan hak akses ke dalam 4 tingkatan tier:
   * 👑 **EXCLUSIF VVIP VAULT** (Akses master raw footage & edisi 4K uncensored)
   * ⭐ **EXCLUSIF VIP STUDIO** (Serial sinematik Asia, Cosplay & JAV style)
   * 💎 **EXCLUSIF TALENT POV** (Konten sudut pandang POV & talent resmi)
@@ -108,38 +123,19 @@ Platform dilengkapi modul generator judul cerdas ([`scripts/ai_title_generator.p
 * Verifikasi ID Discord dan penetapan role otomatis melalui endpoint API.
 
 ### 4. 🎛️ Studio Admin & Bulk Management
-* Unggah video massal (*bulk upload*), pengaturan poster kustom, manajemen slot iklan banner/video, dan pengaturan kategori dinamis.
+* Unggah video massal (*bulk upload*), manajemen link ZeroStorage, monitoring transaksi Discord, dan log aktivitas real-time.
 
 ---
 
-## ⚡ Pipeline Scraper Otomatis (4-Worker Parallel Matrix)
-
-Scraper cloud dirancang dengan strategi matriks paralel di GitHub Actions untuk membagi beban 14 channel Discord menjadi 4 worker yang bekerja serentak:
-
-| No | Worker Group | Target Channel Discord |
-|:---|:---|:---|
-| ⚡ **Worker 1** | `reguler` | `Media Forward`, `Media Barat (Reguler)`, `Media Asia (Reguler)`, `Media Lokal (Reguler)` |
-| ⚡ **Worker 2** | `vip-asia-east` | `VIP Media China`, `VIP Media Korea`, `VIP Media Jepang`, `VIP Media Taiwan` |
-| ⚡ **Worker 3** | `vip-lokal-asia` | `VIP Media Lokal`, `VIP Media Asia` |
-| ⚡ **Worker 4** | `vip-global` | `VIP Media Barat`, `VIP Media Arab`, `VIP Media India`, `VIP Media Latin` |
-
-* **Jadwal Eksekusi**:
-  * 🕒 **Setiap Jam (`cron: '0 * * * *'`)**: Berjalan otomatis 24/7 di cloud untuk menyedot gelombang arsip 6.800+ video lama secara berkelanjutan.
-  * ⏰ **Pukul 01:00 Pagi WIB (`cron: '0 18 * * *'`)**: Siklus harian terjadwal.
-  * 🔘 **Manual Workflow Dispatch**: Dapat dipicu kapan saja melalui antarmuka GitHub Actions.
-
----
-
-## 🔒 Standar Keamanan Sistem (Security Architecture)
+## 🔒 Standar Keamanan & Integritas Sistem
 
 Platform ini menerapkan standar keamanan berlapis:
 
 1. **Anti-Duplikat & Integritas Data (Zero Duplicate Guarantee)**:
    * Verifikasi unik 3 lapis pada backend PHP (`id`, `discordMsgId`, `videoUrl`).
-   * Operasi penulisan file menggunakan `LOCK_EX` eksklusif untuk mencegah korupsi data akibat request konkuren dari 4 worker bersamaan.
-2. **Optimasi & Keamanan Payload (Base64 Sanitization)**:
-   * Mengonversi seluruh string Base64 yang masuk menjadi file JPG fisik di server.
-   * Ukuran database menyusut **99.4%** (dari 14MB menjadi 89KB), memangkas latensi respon API dari 15 detik menjadi **~300ms** dan mencegah serangan *Memory Exhaustion (DoS)*.
+   * Operasi penulisan file menggunakan **Atomic Temp Rename & `.backup` fallback** untuk mencegah korupsi data akibat request konkuren dari 5 worker bersamaan.
+2. **Deep Byte Stream Verification**:
+   * Worker Watchdog membaca 4KB header pertama setiap video secara berkala untuk mendeteksi file 0-byte atau corrupt sebelum dialami oleh member.
 3. **Pembersihan XSS (Cross-Site Scripting Protection)**:
    * Seluruh input data (judul, sinopsis, nama genre, metadata) disaring ketat melalui `htmlspecialchars(strip_tags(...), ENT_QUOTES, 'UTF-8')`.
 4. **Isolasi Kredensial & Header Proteksi**:
@@ -154,9 +150,9 @@ Platform ini menerapkan standar keamanan berlapis:
 |:---|:---|:---|:---|:---:|
 | 1 | **Playback Lintas Perangkat** | Memutar video ZeroStorage di iOS Safari, Android Chrome, dan Desktop | Durasi terdeteksi normal, video berputar instan tanpa jeda `00:00` | ✅ PASS |
 | 2 | **Optimasi FastStart** | Pengujian kecepatan awal pemutaran video berukuran 100MB+ | Buffer awal turun dari ~12 detik menjadi < 1 detik | ✅ PASS |
-| 3 | **Kompresi Database** | Konversi 143+ poster Base64 menjadi file `.jpg` statis | Ukuran `movies.json` turun dari 14.1 MB ke 89 KB | ✅ PASS |
-| 4 | **Uji Beban Anti-Duplikat** | Pemindaian duplikasi pada seluruh database dan input scraper | 13 video duplikat terhapus, filter mencegah re-upload 100% | ✅ PASS |
-| 5 | **Parallel Matrix Scraper** | Eksekusi serentak 4 worker di GitHub Actions | 4 worker berhasil mengunggah 147+ video baru dalam 15 menit | ✅ PASS |
+| 3 | **Cloudflare CDN Thumbnails** | Migrasi thumbnail lokal ke direct CDN (`zerostorage.net/api/files/{id}/thumbnail`) | Thumbnail tampil tajam, anti-hilang saat deployment | ✅ PASS |
+| 4 | **Uji Beban Anti-Duplikat** | Pemindaian duplikasi pada seluruh database dan input scraper | Filter mencegah re-upload 100% dari 2.170+ video | ✅ PASS |
+| 5 | **5-Worker Parallel Pipeline** | Eksekusi serentak 5 worker di GitHub Actions | Seluruh worker berjalan paralel tanpa tabrakan file database | ✅ PASS |
 | 6 | **Stabilitas Rekomendasi** | Navigasi bolak-balik Beranda dan Private Server | Rekomendasi acak menggunakan bobot stabil per sesi tanpa reshuffle loop | ✅ PASS |
 
 ---
@@ -167,34 +163,36 @@ Platform ini menerapkan standar keamanan berlapis:
 sekolah-nakal/
 ├── .github/
 │   └── workflows/
-│       └── auto-scraper.yml        # Workflow GitHub Actions 4-Worker Matrix & Hourly Schedule
+│       ├── auto-scraper.yml            # 4-Worker Ingestion Matrix (Hourly Cron)
+│       └── video-health-watchdog.yml   # Worker 5: Video Health Watchdog (Every 6h Cron)
 ├── public/
 │   ├── api/
 │   │   ├── data/
-│   │   │   ├── config.json         # Konfigurasi Guild & Role Discord
-│   │   │   └── movies.json         # Database utama katalog video (89 KB)
-│   │   ├── uploads/
-│   │   │   └── posters/            # Direktori file gambar poster JPG statis
-│   │   ├── ads.php                 # API Manajemen Iklan
-│   │   ├── categories.php          # API Manajemen Kategori
-│   │   ├── discord.php             # API Autentikasi & Live Transaksi Discord
-│   │   ├── movies.php              # API Katalog dengan deduplikasi & LOCK_EX
-│   │   └── zerostorage.php         # Endpoint integrasi ZeroStorage
-│   └── images/                     # Aset branding dan logo
+│   │   │   ├── config.json             # Konfigurasi Guild & Role Discord
+│   │   │   └── movies.json             # Database utama katalog video (2.170+ film)
+│   │   ├── ads.php                     # API Manajemen Iklan
+│   │   ├── categories.php              # API Manajemen Kategori
+│   │   ├── discord.php                 # API Autentikasi & Live Transaksi Discord
+│   │   ├── movies.php                  # API Katalog dengan Atomic Write & Deduplikasi
+│   │   └── zerostorage.php             # Endpoint integrasi ZeroStorage
+│   └── images/                         # Aset branding dan logo resmi
 ├── scripts/
-│   └── auto_scraper_discord.py     # Skrip Python Master Scraper, Remuxer & Publisher
+│   ├── auto_scraper_discord.py         # Ingestion Engine untuk Worker 1 s/d 4
+│   ├── video_health_checker_daemon.py  # Health Watchdog & Deep Byte Inspector (Worker 5)
+│   ├── ai_title_generator.py           # AI Slang Title & Copywriting Engine
+│   └── batch_rename_all_movies.py      # Batch Renamer Database Utility
 ├── src/
 │   ├── components/
-│   │   ├── layout/Header.tsx       # Bar navigasi dengan link Discord & Telegram
-│   │   ├── payment/                # Horizontal Swipe Transaction History Feed
-│   │   ├── player/ArtPlayer.tsx    # Modern video player dengan optimasi iOS
-│   │   └── movie/                  # Grid, Card, dan Row katalog responsif
+│   │   ├── layout/Header.tsx           # Bar navigasi dengan link Discord & Telegram
+│   │   ├── payment/                    # Horizontal Swipe Transaction History Feed
+│   │   ├── player/ArtPlayer.tsx        # Modern video player dengan hardware MP4 binding
+│   │   └── movie/                      # Grid, Card, dan DynamicThumbnail responsif
 │   ├── pages/
-│   │   ├── Home.tsx                # Beranda dengan cache-first rendering
-│   │   ├── PrivateServer.tsx       # Katalog server privat dengan pagination 20/page
-│   │   └── Watch.tsx               # Halaman pemutar video dan detail streaming
-│   ├── services/                   # Service layer (movieStore, discordRealtime, dll)
-│   └── utils/                      # Helper tier, sanitasi, dan URL formatter
+│   │   ├── Home.tsx                    # Beranda dengan cache-first rendering
+│   │   ├── PrivateServer.tsx           # Katalog server privat dengan pagination 20/page
+│   │   └── Watch.tsx                   # Halaman pemutar video dan detail streaming
+│   ├── services/                       # Service layer (movieStore, movieService, dll)
+│   └── utils/                          # Helper tier, sanitasi, dan URL formatter
 ├── package.json
 ├── vite.config.ts
 └── README.md
@@ -220,13 +218,16 @@ npm run dev
 npm run build
 ```
 
-### 2. Menjalankan Scraper Lokal
+### 2. Menjalankan Worker Secara Manual
 ```bash
-# Menjalankan grup kategori tertentu:
+# Menjalankan Worker Scraper (Worker 1 s/d 4):
 python3 scripts/auto_scraper_discord.py --group reguler --limit 30
 python3 scripts/auto_scraper_discord.py --group vip-asia-east --limit 30
 python3 scripts/auto_scraper_discord.py --group vip-lokal-asia --limit 30
 python3 scripts/auto_scraper_discord.py --group vip-global --limit 30
+
+# Menjalankan Worker Health Watchdog (Worker 5):
+python3 scripts/video_health_checker_daemon.py
 ```
 
 ---
