@@ -178,6 +178,12 @@ def is_garbage_or_random_title(title: str) -> bool:
     if re.search(r'[0-9a-f]{6,}', t_lower):
         return True
 
+    # Check url-encoded artifacts like %20 or 20 between words (e.g. Kingdom20Of20Dark)
+    if re.search(r'[a-z]20[a-z]', t_lower) or '20of20' in t_lower or 'kingdom20' in t_lower:
+        return True
+    if re.search(r'2028\d+', t_lower) or re.search(r'2029\d+', t_lower):
+        return True
+
     words = re.split(r'[\s_.-]+', t_lower)
     for w in words:
         if len(w) >= 5 and re.search(r'[a-z]', w) and re.search(r'\d', w):
